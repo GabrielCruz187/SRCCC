@@ -53,6 +53,39 @@ const memberFlowData = [
 const occupancyRate = 68;
 const sparkline = [40, 44, 39, 48, 52, 58, 61];
 
+const bankAccounts = [
+  { name: "Sicredi — Conta Corrente", type: "Banco", saldo: 22840.60 },
+  { name: "Caixa (espécie)", type: "Espécie", saldo: 980.00 },
+  { name: "Sicredi — Aplicação/Resgate", type: "Aplicação", saldo: 15000.00 },
+];
+const ledgerData = [
+  { mes: "Jan", conta: "Integralização de cota de capital", data: "02/01/2026", quem: "Rogério Antunes Silva", obs: "Parcela 2 de 10", banco: "Sicredi", saida: null, entrada: 380.00 },
+  { mes: "Jan", conta: "Tarifas Bancárias", data: "05/01/2026", quem: "Sicredi", obs: "Tarifa de manutenção", banco: "Sicredi", saida: 32.00, entrada: null },
+  { mes: "Jan", conta: "Despesas Diversas", data: "05/01/2026", quem: "Loja Esportiva Bertoli", obs: "Material esportivo", banco: "Caixa", saida: 210.00, entrada: null },
+  { mes: "Jan", conta: "Manutenção de Bens", data: "06/01/2026", quem: "Zeladoria Backes", obs: "", banco: "Sicredi", saida: 145.00, entrada: null },
+  { mes: "Jan", conta: "Energia Elétrica", data: "08/01/2026", quem: "RGE", obs: "Conta de luz", banco: "Sicredi", saida: 712.40, entrada: null },
+  { mes: "Jan", conta: "Demais Entradas Sócios", data: "08/01/2026", quem: "Adriana Kunz", obs: "Entrada Pix", banco: "Sicredi", saida: null, entrada: 300.00 },
+  { mes: "Jan", conta: "Escritório de Contabilidade", data: "10/01/2026", quem: "Contabilidade Ruggeri", obs: "", banco: "Sicredi", saida: 180.00, entrada: null },
+  { mes: "Jan", conta: "Tratamento Piscina", data: "12/01/2026", quem: "Produtos Químicos Aquavida", obs: "", banco: "Caixa", saida: 340.00, entrada: null },
+  { mes: "Jan", conta: "Salários", data: "14/01/2026", quem: "Folha de pagamento", obs: "", banco: "Sicredi", saida: 2100.00, entrada: null },
+  { mes: "Jan", conta: "Seguros", data: "18/01/2026", quem: "HDI Seguros", obs: "", banco: "Sicredi", saida: 210.00, entrada: null },
+  { mes: "Jan", conta: "Material de Consumo", data: "20/01/2026", quem: "Mercado Central", obs: "", banco: "Caixa", saida: 480.00, entrada: null },
+  { mes: "Jan", conta: "Mensalidades", data: "31/01/2026", quem: "Associados", obs: "Liquidação de mensalidades", banco: "Sicredi", saida: null, entrada: 3850.00 },
+];
+const despesaCategorias = [
+  { name: "Salários", v: 18200.00 }, { name: "Energia Elétrica", v: 4320.00 },
+  { name: "Material de Consumo", v: 3760.00 }, { name: "Tratamento Piscina", v: 2890.00 },
+  { name: "Manutenção de Bens", v: 2610.00 }, { name: "Devolução cota capital", v: 2050.00 },
+  { name: "Escritório Contábil", v: 1440.00 }, { name: "Tarifas Bancárias", v: 980.00 },
+  { name: "Internet", v: 1080.00 }, { name: "Despesas Diversas", v: 760.00 }, { name: "Seguros", v: 540.00 },
+];
+const resultadoMensal = [
+  { m: "Jan", acumulado: -2100.00 }, { m: "Fev", acumulado: -1450.00 }, { m: "Mar", acumulado: -1890.00 },
+  { m: "Abr", acumulado: -2600.00 }, { m: "Mai", acumulado: 120.00 }, { m: "Jun", acumulado: 2340.00 },
+  { m: "Jul", acumulado: 4780.00 }, { m: "Ago", acumulado: 6920.00 }, { m: "Set", acumulado: 9150.00 },
+  { m: "Out", acumulado: 11600.00 }, { m: "Nov", acumulado: 14300.00 }, { m: "Dez", acumulado: 17050.00 },
+];
+
 // ---------------- helpers ----------------
 function useCountUp(to, duration = 1000) {
   const [val, setVal] = useState(0);
@@ -183,7 +216,6 @@ const NAV = [
       { id: "documentos", label: "Documentos", icon: FileText },
     ] },
   { group: "Controle", items: [
-      { id: "acesso", label: "Controle de Acesso", icon: ScanLine },
       { id: "relatorios", label: "Relatórios", icon: FileBarChart },
       { id: "config", label: "Configurações", icon: Settings },
     ] },
@@ -192,7 +224,7 @@ const TITLES = {
   dashboard: "Dashboard", socios: "Sócios & Dependentes", financeiro: "Mensalidades & Taxas",
   reservas: "Reservas de Espaços", futebol: "Futebol — Campo 11 e 7", piscina: "Piscina & Lazer",
   eventos: "Eventos & Convidados", bar: "Bar & Comandas", patrimonio: "Ativos & Manutenção",
-  comunicacao: "Mural & Avisos", documentos: "Documentos", acesso: "Controle de Acesso",
+  comunicacao: "Mural & Avisos", documentos: "Documentos",
   relatorios: "Relatórios", config: "Configurações",
 };
 
@@ -328,7 +360,7 @@ export default function SRCCCApp() {
             <div className="content" key={view}>
               {view === "dashboard" && <Dashboard T={T} goTo={goTo} statusData={statusData} activePie={activePie} setActivePie={setActivePie} />}
               {view === "socios" && <Socios T={T} socioTab={socioTab} setSocioTab={setSocioTab} openModal={setModal} />}
-              {view === "financeiro" && <Financeiro T={T} finTab={finTab} setFinTab={setFinTab} notify={notify} />}
+              {view === "financeiro" && <Financeiro T={T} finTab={finTab} setFinTab={setFinTab} notify={notify} openModal={setModal} />}
               {view === "reservas" && <Reservas T={T} openModal={setModal} notify={notify} />}
               {view === "futebol" && <Futebol T={T} />}
               {view === "piscina" && <Piscina T={T} />}
@@ -337,7 +369,6 @@ export default function SRCCCApp() {
               {view === "patrimonio" && <Patrimonio T={T} patTab={patTab} setPatTab={setPatTab} openModal={setModal} />}
               {view === "comunicacao" && <Comunicacao T={T} comTab={comTab} setComTab={setComTab} notify={notify} />}
               {view === "documentos" && <Documentos T={T} docTab={docTab} setDocTab={setDocTab} notify={notify} />}
-              {view === "acesso" && <Acesso T={T} />}
               {view === "relatorios" && <Relatorios T={T} />}
               {view === "config" && <Config T={T} />}
             </div>
@@ -614,7 +645,8 @@ function Socios({ T, socioTab, setSocioTab, openModal }) {
   );
 }
 
-function Financeiro({ T, finTab, setFinTab, notify }) {
+function Financeiro({ T, finTab, setFinTab, notify, openModal }) {
+  const totalBanco = bankAccounts.reduce((s, a) => s + a.saldo, 0);
   return (
     <div className="view">
       <div className="kpi-grid">
@@ -626,6 +658,9 @@ function Financeiro({ T, finTab, setFinTab, notify }) {
 
       <div className="subtabs">
         <button className={"subtab" + (finTab === "mensalidades" ? " active" : "")} onClick={() => setFinTab("mensalidades")}>Mensalidades</button>
+        <button className={"subtab" + (finTab === "contas" ? " active" : "")} onClick={() => setFinTab("contas")}>Contas & Saldos</button>
+        <button className={"subtab" + (finTab === "lancamentos" ? " active" : "")} onClick={() => setFinTab("lancamentos")}>Livro-caixa</button>
+        <button className={"subtab" + (finTab === "despesas" ? " active" : "")} onClick={() => setFinTab("despesas")}>Despesas</button>
         <button className={"subtab" + (finTab === "inadimplencia" ? " active" : "")} onClick={() => setFinTab("inadimplencia")}>Inadimplência</button>
         <button className={"subtab" + (finTab === "taxas" ? " active" : "")} onClick={() => setFinTab("taxas")}>Tabela de taxas</button>
       </div>
@@ -652,6 +687,104 @@ function Financeiro({ T, finTab, setFinTab, notify }) {
                 </tbody>
               </table>
             </TableWrap>
+          </Card>
+        </>
+      )}
+
+      {finTab === "contas" && (
+        <>
+          <div className="toolbar">
+            <h3 className="serif" style={{ fontSize: 16, color: "var(--green-dark)" }}>Saldo consolidado: R$ {totalBanco.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</h3>
+            <button className="btn-add" onClick={() => openModal("deposito")}><Plus size={15} /> Lançar depósito bancário</button>
+          </div>
+          <div className="accounts-grid">
+            {bankAccounts.map((a) => (
+              <div className="account-card" key={a.name}>
+                <div className="account-type">{a.type}</div>
+                <div className="account-name">{a.name}</div>
+                <div className="account-balance">R$ {a.saldo.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</div>
+              </div>
+            ))}
+          </div>
+          <Card title="Últimas movimentações bancárias" style={{ padding: 0, marginTop: 16 }}>
+            <TableWrap>
+              <table>
+                <thead><tr><th>Data</th><th>Conta</th><th>Descrição</th><th>Banco</th><th>Valor</th></tr></thead>
+                <tbody>
+                  {ledgerData.slice(-6).reverse().map((l, i) => (
+                    <tr key={i}>
+                      <td>{l.data}</td><td>{l.conta}</td><td>{l.quem}{l.obs ? " — " + l.obs : ""}</td><td>{l.banco}</td>
+                      <td style={{ color: l.entrada ? "var(--ok)" : "var(--red)", fontWeight: 600 }}>
+                        {l.entrada ? "+ R$ " + l.entrada.toLocaleString("pt-BR", { minimumFractionDigits: 2 }) : "− R$ " + l.saida.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </TableWrap>
+          </Card>
+        </>
+      )}
+
+      {finTab === "lancamentos" && (
+        <>
+          <div className="toolbar">
+            <div className="search-box"><Search size={14} /> <input placeholder="Buscar por conta, credor/devedor..." /></div>
+            <button className="btn-add" onClick={() => openModal("lancamento")}><Plus size={15} /> Novo lançamento</button>
+          </div>
+          <Card style={{ padding: 0 }}>
+            <TableWrap>
+              <table>
+                <thead><tr><th>Mês</th><th>Conta</th><th>Data</th><th>Credor/Devedor</th><th>Observação</th><th>Banco</th><th>Saídas</th><th>Entradas</th></tr></thead>
+                <tbody>
+                  {ledgerData.map((l, i) => (
+                    <tr key={i}>
+                      <td>{l.mes}</td><td className="row-name">{l.conta}</td><td>{l.data}</td><td>{l.quem}</td><td className="row-sub">{l.obs || "—"}</td>
+                      <td><Pill tone={l.banco === "Sicredi" ? "ok" : "neutral"} T={T}>{l.banco}</Pill></td>
+                      <td>{l.saida ? "R$ " + l.saida.toLocaleString("pt-BR", { minimumFractionDigits: 2 }) : "—"}</td>
+                      <td>{l.entrada ? "R$ " + l.entrada.toLocaleString("pt-BR", { minimumFractionDigits: 2 }) : "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </TableWrap>
+          </Card>
+        </>
+      )}
+
+      {finTab === "despesas" && (
+        <>
+          <Card title="Despesas por categoria (acumulado no ano)">
+            <div style={{ width: "100%", height: 280 }}>
+              <ResponsiveContainer>
+                <BarChart data={despesaCategorias} layout="vertical" margin={{ top: 5, right: 24, left: 10, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={T.border} horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 11, fill: T.textSoft }} axisLine={{ stroke: T.border }} tickLine={false} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+                  <YAxis type="category" dataKey="name" tick={{ fontSize: 11.5, fill: T.textSoft }} axisLine={false} tickLine={false} width={130} />
+                  <Tooltip formatter={(v) => "R$ " + v.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} contentStyle={{ borderRadius: 10, border: `1px solid ${T.border}`, fontSize: 12.5, background: T.surface, color: T.text }} cursor={{ fill: T.surfaceAlt }} />
+                  <Bar dataKey="v" radius={[0, 6, 6, 0]} fill={T.red} animationDuration={1000} animationEasing="ease-out" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+          <Card title="Resultado acumulado no ano">
+            <div style={{ width: "100%", height: 200 }}>
+              <ResponsiveContainer>
+                <AreaChart data={resultadoMensal} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="resGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={T.green} stopOpacity={0.5} />
+                      <stop offset="100%" stopColor={T.green} stopOpacity={0.02} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke={T.border} vertical={false} />
+                  <XAxis dataKey="m" tick={{ fontSize: 11, fill: T.textSoft }} axisLine={{ stroke: T.border }} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10.5, fill: T.textSoft }} axisLine={false} tickLine={false} width={44} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+                  <Tooltip formatter={(v) => "R$ " + v.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} contentStyle={{ borderRadius: 10, border: `1px solid ${T.border}`, fontSize: 12.5, background: T.surface, color: T.text }} />
+                  <Area type="monotone" dataKey="acumulado" stroke={T.green} strokeWidth={2.5} fill="url(#resGrad)" animationDuration={1200} animationEasing="ease-out" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
           </Card>
         </>
       )}
@@ -1183,32 +1316,6 @@ function Documentos({ T, docTab, setDocTab, notify }) {
 }
 
 
-function Acesso({ T }) {
-  return (
-    <div className="view">
-      <div className="kpi-grid">
-        <div className="kpi-card"><div className="label">Acessos hoje</div><div className="value"><KpiNumber value={184} /></div></div>
-        <div className="kpi-card"><div className="label">Sócios no clube agora</div><div className="value"><KpiNumber value={57} /></div></div>
-        <div className="kpi-card"><div className="label">Convidados hoje</div><div className="value"><KpiNumber value={12} /></div></div>
-        <div className="kpi-card"><div className="label">Tentativas bloqueadas</div><div className="value"><KpiNumber value={3} /></div></div>
-      </div>
-      <Card title="Registro de entradas e saídas" style={{ padding: 0 }}>
-        <TableWrap>
-          <table>
-            <thead><tr><th>Nome</th><th>Tipo</th><th>Entrada</th><th>Saída</th><th>Meio</th></tr></thead>
-            <tbody>
-              <tr><td className="row-name">Rogério Antunes Silva</td><td>Titular</td><td>18:20</td><td>—</td><td>Carteirinha</td></tr>
-              <tr><td className="row-name">Camila Antunes Silva</td><td>Dependente</td><td>18:22</td><td>—</td><td>Carteirinha</td></tr>
-              <tr><td className="row-name">João Pedro Bortoluzzi</td><td>Titular</td><td>17:50</td><td>19:10</td><td>App / QR</td></tr>
-              <tr><td className="row-name">Fernando Zanella</td><td>Titular</td><td>—</td><td>—</td><td><Pill tone="bad" T={T}>Bloqueado (inadimplente)</Pill></td></tr>
-            </tbody>
-          </table>
-        </TableWrap>
-      </Card>
-    </div>
-  );
-}
-
 function Relatorios({ T }) {
   const reports = [
     { icon: Users, title: "Relatório de sócios", desc: "Ativos, inadimplentes, suspensos e novos cadastros por período e categoria." },
@@ -1300,6 +1407,17 @@ function Modal({ type, onClose, notify }) {
       ["Sócio responsável", "full"], ["Data", null, "date"], ["Horário"],
     ] },
     evento: { title: "Novo evento", cta: "Criar evento", fields: [["Nome do evento"], ["Data", null, "date"], ["Local"], ["Descrição", "full"]] },
+    deposito: { title: "Lançar depósito bancário", cta: "Lançar depósito", fields: [
+      ["Conta bancária", "full", "select", ["Sicredi — Conta Corrente", "Caixa (espécie)", "Sicredi — Aplicação/Resgate"]],
+      ["Valor"], ["Data", null, "date"], ["Origem / Observação", "full"],
+    ] },
+    lancamento: { title: "Novo lançamento", cta: "Salvar lançamento", fields: [
+      ["Tipo", null, "select", ["Entrada", "Saída"]],
+      ["Conta (categoria)", null, "select", ["Mensalidades", "Integralização de cota de capital", "Salários", "Energia Elétrica", "Tratamento Piscina", "Material de Consumo", "Manutenção de Bens", "Tarifas Bancárias", "Despesas Diversas", "Seguros", "Internet", "Escritório de Contabilidade"]],
+      ["Data", null, "date"], ["Credor/Devedor"],
+      ["Conta bancária", null, "select", ["Sicredi", "Caixa"]],
+      ["Valor"], ["Observação", "full"],
+    ] },
   }[type];
 
   return (
@@ -1316,7 +1434,7 @@ function Modal({ type, onClose, notify }) {
         </div>
         <div className="modal-foot">
           <button className="btn-ghost" onClick={onClose}>Cancelar</button>
-          <button className="btn-add" onClick={() => { notify && notify(content.cta.replace("Salvar ", "").replace(/^Confirmar /, "").replace(/^Criar /, "") + " salvo com sucesso!", "ok"); onClose(); }}>{content.cta}</button>
+          <button className="btn-add" onClick={() => { notify && notify(content.cta + " com sucesso!", "ok"); onClose(); }}>{content.cta}</button>
         </div>
       </div>
     </div>
@@ -1487,6 +1605,17 @@ ul.simple-list .meta{ color:var(--text-soft); font-size:12px; }
 .kv-list .kv{ display:flex; justify-content:space-between; align-items:center; font-size:13px; color:var(--text-soft); padding:6px 0; }
 .kv-list .kv b{ color:var(--text); }
 
+/* bank accounts */
+.accounts-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+.account-card{
+  background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:18px;
+  transition:transform .18s, box-shadow .18s; animation:cardIn .5s ease backwards;
+}
+.account-card:hover{ transform:translateY(-3px); box-shadow:0 12px 26px var(--shadow); }
+.account-type{ font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--gold); font-weight:700; margin-bottom:4px; }
+.account-name{ font-size:13px; color:var(--text-soft); font-weight:600; margin-bottom:8px; }
+.account-balance{ font-family:'Fraunces',serif; font-size:22px; font-weight:700; color:var(--kpi-number); }
+
 /* PDV */
 .pdv-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
 .pdv-btn{
@@ -1617,7 +1746,7 @@ tbody tr:hover{ background:var(--surface-alt); }
 @media (max-width: 1080px){
   .kpi-grid{ grid-template-columns:repeat(2,1fr); }
   .grid-2{ grid-template-columns:1fr; }
-  .space-grid, .report-grid{ grid-template-columns:repeat(2,1fr); }
+  .space-grid, .report-grid, .accounts-grid{ grid-template-columns:repeat(2,1fr); }
 }
 @media (max-width: 860px){
   .sidebar{ position:fixed; left:0; top:0; transform:translateX(-100%); box-shadow:10px 0 30px rgba(0,0,0,.2); }
@@ -1632,7 +1761,7 @@ tbody tr:hover{ background:var(--surface-alt); }
   .kpi-grid{ grid-template-columns:1fr 1fr; gap:10px; }
   .kpi-card{ padding:14px; }
   .kpi-number{ font-size:21px; }
-  .space-grid, .report-grid{ grid-template-columns:1fr; }
+  .space-grid, .report-grid, .accounts-grid, .pdv-grid{ grid-template-columns:1fr; }
   .form-grid{ grid-template-columns:1fr; }
   .toolbar{ flex-direction:column; align-items:stretch; }
   .toolbar .search-box{ width:100%; }
