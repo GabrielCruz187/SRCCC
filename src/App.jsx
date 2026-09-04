@@ -85,6 +85,14 @@ const resultadoMensal = [
   { m: "Jul", acumulado: 4780.00 }, { m: "Ago", acumulado: 6920.00 }, { m: "Set", acumulado: 9150.00 },
   { m: "Out", acumulado: 11600.00 }, { m: "Nov", acumulado: 14300.00 }, { m: "Dez", acumulado: 17050.00 },
 ];
+const initialContasPagar = [
+  { id: 1, fornecedor: "RGE", categoria: "Energia Elétrica", vencimento: "10/09/2026", valor: 712.40, banco: "Sicredi — Conta Corrente", status: "pendente" },
+  { id: 2, fornecedor: "Produtos Químicos Aquavida", categoria: "Tratamento Piscina", vencimento: "05/09/2026", valor: 340.00, banco: "Caixa (espécie)", status: "vencido" },
+  { id: 3, fornecedor: "Contabilidade Ruggeri", categoria: "Escritório de Contabilidade", vencimento: "15/09/2026", valor: 180.00, banco: "Sicredi — Conta Corrente", status: "pendente" },
+  { id: 4, fornecedor: "HDI Seguros", categoria: "Seguros", vencimento: "20/09/2026", valor: 210.00, banco: "Sicredi — Conta Corrente", status: "pendente" },
+  { id: 5, fornecedor: "Jardinagem Silva & Cia", categoria: "Manutenção de Bens", vencimento: "12/09/2026", valor: 1200.00, banco: "Sicredi — Conta Corrente", status: "pendente" },
+  { id: 6, fornecedor: "SegurançaMax", categoria: "Despesas Diversas", vencimento: "01/09/2026", valor: 2400.00, banco: "Sicredi — Conta Corrente", status: "pago", dataPagamento: "01/09/2026" },
+];
 
 // ---------------- helpers ----------------
 function useCountUp(to, duration = 1000) {
@@ -647,6 +655,27 @@ function Socios({ T, socioTab, setSocioTab, openModal }) {
 
 function Financeiro({ T, finTab, setFinTab, notify, openModal }) {
   const totalBanco = bankAccounts.reduce((s, a) => s + a.saldo, 0);
+  const [contasPagar, setContasPagar] = useState(initialContasPagar);
+  const [baixaTarget, setBaixaTarget] = useState(null);
+  const [baixaBanco, setBaixaBanco] = useState(bankAccounts[0].name);
+  const [baixaData, setBaixaData] = useState("");
+
+  const totalAPagar = contasPagar.filter((c) => c.status !== "pago").reduce((s, c) => s + c.valor, 0);
+  const totalVencidas = contasPagar.filter((c) => c.status === "vencido").length;
+  const totalPagoMes = contasPagar.filter((c) => c.status === "pago").reduce((s, c) => s + c.valor, 0);
+
+  function abrirBaixa(id) {
+    setBaixaTarget(id);
+    setBaixaBanco(bankAccounts[0].name);
+    setBaixaData("");
+  }
+  function confirmarBaixa() {
+    const item = contasPagar.find((c) => c.id === baixaTarget);
+    setContasPagar((cs) => cs.map((c) => c.id === baixaTarget ? { ...c, status: "pago", dataPagamento: baixaData || "hoje", banco: baixaBanco } : c));
+    notify(`Baixa lançada: ${item.fornecedor} — R$ ${item.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, "ok");
+    setBaixaTarget(null);
+  }
+
   return (
     <div className="view">
       <div className="kpi-grid">
@@ -658,6 +687,7 @@ function Financeiro({ T, finTab, setFinTab, notify, openModal }) {
 
       <div className="subtabs">
         <button className={"subtab" + (finTab === "mensalidades" ? " active" : "")} onClick={() => setFinTab("mensalidades")}>Mensalidades</button>
+        <button className={"subtab" + (finTab === "pagar" ? " active" : "")} onClick={() => setFinTab("pagar")}>Contas a Pagar</button>
         <button className={"subtab" + (finTab === "contas" ? " active" : "")} onClick={() => setFinTab("contas")}>Contas & Saldos</button>
         <button className={"subtab" + (finTab === "lancamentos" ? " active" : "")} onClick={() => setFinTab("lancamentos")}>Livro-caixa</button>
         <button className={"subtab" + (finTab === "despesas" ? " active" : "")} onClick={() => setFinTab("despesas")}>Despesas</button>
@@ -684,6 +714,46 @@ function Financeiro({ T, finTab, setFinTab, notify, openModal }) {
                   <tr><td className="row-name">Marta Weber</td><td>Set/2026</td><td>10/09/2026</td><td>R$ 266,84</td><td><Pill tone="warn" T={T}>Pendente</Pill></td><td className="table-actions"><button onClick={() => notify("Cobrança enviada para Marta Weber", "warn")}><Send size={13} /> Cobrar</button></td></tr>
                   <tr><td className="row-name">Fernando Zanella</td><td>Ago/2026</td><td>10/08/2026</td><td>R$ 155,00</td><td><Pill tone="bad" T={T}>Atrasado 46d</Pill></td><td className="table-actions"><button onClick={() => notify("Cobrança enviada para Fernando Zanella", "warn")}>Cobrar</button><button onClick={() => notify("Sócio encaminhado para negativação", "bad")}>Negativar</button></td></tr>
                   <tr><td className="row-name">Osvaldo Piovesan</td><td>Set/2026</td><td>—</td><td>R$ 0,00</td><td><Pill tone="neutral" T={T}>Isento</Pill></td><td className="table-actions"><button>Ver</button></td></tr>
+                </tbody>
+              </table>
+            </TableWrap>
+          </Card>
+        </>
+      )}
+
+      {finTab === "pagar" && (
+        <>
+          <div className="kpi-grid" style={{ marginBottom: 16 }}>
+            <div className="kpi-card"><div className="label">Total a pagar</div><div className="value">R$ {totalAPagar.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</div></div>
+            <div className="kpi-card"><div className="label">Contas vencidas</div><div className="value">{totalVencidas}</div></div>
+            <div className="kpi-card"><div className="label">Pago este mês</div><div className="value">R$ {totalPagoMes.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</div></div>
+          </div>
+          <div className="toolbar">
+            <div className="search-box"><Search size={14} /> <input placeholder="Buscar fornecedor..." /></div>
+            <button className="btn-add" onClick={() => openModal("contapagar")}><Plus size={15} /> Nova conta a pagar</button>
+          </div>
+          <Card style={{ padding: 0 }}>
+            <TableWrap>
+              <table>
+                <thead><tr><th>Fornecedor</th><th>Categoria</th><th>Vencimento</th><th>Valor</th><th>Conta prevista</th><th>Status</th><th></th></tr></thead>
+                <tbody>
+                  {contasPagar.map((c) => (
+                    <tr key={c.id}>
+                      <td className="row-name">{c.fornecedor}</td>
+                      <td>{c.categoria}</td>
+                      <td>{c.vencimento}</td>
+                      <td>R$ {c.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
+                      <td>{c.banco}</td>
+                      <td>
+                        {c.status === "pago" && <Pill tone="ok" T={T}>Pago em {c.dataPagamento}</Pill>}
+                        {c.status === "vencido" && <Pill tone="bad" T={T}>Vencida</Pill>}
+                        {c.status === "pendente" && <Pill tone="neutral" T={T}>A vencer</Pill>}
+                      </td>
+                      <td className="table-actions">
+                        {c.status !== "pago" ? <button onClick={() => abrirBaixa(c.id)}><CheckCircle2 size={13} /> Dar baixa</button> : <span className="row-sub">—</span>}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </TableWrap>
@@ -826,6 +896,30 @@ function Financeiro({ T, finTab, setFinTab, notify, openModal }) {
           </TableWrap>
         </Card>
       )}
+
+      {baixaTarget && (() => {
+        const item = contasPagar.find((c) => c.id === baixaTarget);
+        return (
+          <div className="modal-bg" onClick={(e) => e.target === e.currentTarget && setBaixaTarget(null)}>
+            <div className="modal">
+              <div className="modal-head"><h3>Registrar pagamento — {item.fornecedor}</h3><button className="modal-close" onClick={() => setBaixaTarget(null)}><X size={18} /></button></div>
+              <div className="form-grid">
+                <div className="field full"><label>Valor</label><input value={`R$ ${item.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`} disabled readOnly /></div>
+                <div className="field full"><label>Conta bancária utilizada</label>
+                  <select value={baixaBanco} onChange={(e) => setBaixaBanco(e.target.value)}>
+                    {bankAccounts.map((a) => <option key={a.name}>{a.name}</option>)}
+                  </select>
+                </div>
+                <div className="field full"><label>Data do pagamento</label><input type="date" onChange={(e) => setBaixaData(e.target.value)} /></div>
+              </div>
+              <div className="modal-foot">
+                <button className="btn-ghost" onClick={() => setBaixaTarget(null)}>Cancelar</button>
+                <button className="btn-add" onClick={confirmarBaixa}>Confirmar baixa</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
@@ -1410,6 +1504,12 @@ function Modal({ type, onClose, notify }) {
     deposito: { title: "Lançar depósito bancário", cta: "Lançar depósito", fields: [
       ["Conta bancária", "full", "select", ["Sicredi — Conta Corrente", "Caixa (espécie)", "Sicredi — Aplicação/Resgate"]],
       ["Valor"], ["Data", null, "date"], ["Origem / Observação", "full"],
+    ] },
+    contapagar: { title: "Nova conta a pagar", cta: "Cadastrar conta", fields: [
+      ["Fornecedor", "full"],
+      ["Categoria", null, "select", ["Energia Elétrica", "Tratamento Piscina", "Manutenção de Bens", "Escritório de Contabilidade", "Seguros", "Internet", "Material de Consumo", "Despesas Diversas", "Tarifas Bancárias"]],
+      ["Vencimento", null, "date"], ["Valor"],
+      ["Conta bancária prevista", "full", "select", ["Sicredi — Conta Corrente", "Caixa (espécie)", "Sicredi — Aplicação/Resgate"]],
     ] },
     lancamento: { title: "Novo lançamento", cta: "Salvar lançamento", fields: [
       ["Tipo", null, "select", ["Entrada", "Saída"]],
