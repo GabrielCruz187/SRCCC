@@ -12,7 +12,9 @@ import {
   LayoutDashboard, Users, Wallet, CalendarDays, Trophy, Waves,
   PartyPopper, ScanLine, FileBarChart, Settings, Menu, X, Search,
   Bell, Plus, Download, Send, Eye, Pencil, Flame, Volleyball,
-  Landmark, ShieldCheck, Sun, Moon, TrendingUp, TrendingDown, CheckCircle2, Info
+  Landmark, ShieldCheck, Sun, Moon, TrendingUp, TrendingDown, CheckCircle2, Info,
+  Coffee, Wrench, Megaphone, FileText, Package, ClipboardList, Vote,
+  MessageCircle, ScrollText, UserCog, ShieldAlert, Trash2
 } from "lucide-react";
 
 // ---------------- THEME ----------------
@@ -174,6 +176,12 @@ const NAV = [
       { id: "piscina", label: "Piscina & Lazer", icon: Waves },
       { id: "eventos", label: "Eventos & Convidados", icon: PartyPopper },
     ] },
+  { group: "Bar & Consumo", items: [{ id: "bar", label: "Bar & Comandas", icon: Coffee }] },
+  { group: "Patrimônio", items: [{ id: "patrimonio", label: "Ativos & Manutenção", icon: Wrench }] },
+  { group: "Comunicação", items: [
+      { id: "comunicacao", label: "Mural & Avisos", icon: Megaphone },
+      { id: "documentos", label: "Documentos", icon: FileText },
+    ] },
   { group: "Controle", items: [
       { id: "acesso", label: "Controle de Acesso", icon: ScanLine },
       { id: "relatorios", label: "Relatórios", icon: FileBarChart },
@@ -183,7 +191,9 @@ const NAV = [
 const TITLES = {
   dashboard: "Dashboard", socios: "Sócios & Dependentes", financeiro: "Mensalidades & Taxas",
   reservas: "Reservas de Espaços", futebol: "Futebol — Campo 11 e 7", piscina: "Piscina & Lazer",
-  eventos: "Eventos & Convidados", acesso: "Controle de Acesso", relatorios: "Relatórios", config: "Configurações",
+  eventos: "Eventos & Convidados", bar: "Bar & Comandas", patrimonio: "Ativos & Manutenção",
+  comunicacao: "Mural & Avisos", documentos: "Documentos", acesso: "Controle de Acesso",
+  relatorios: "Relatórios", config: "Configurações",
 };
 
 export default function SRCCCApp() {
@@ -194,6 +204,10 @@ export default function SRCCCApp() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [socioTab, setSocioTab] = useState("titulares");
   const [finTab, setFinTab] = useState("mensalidades");
+  const [barTab, setBarTab] = useState("comandas");
+  const [patTab, setPatTab] = useState("ativos");
+  const [comTab, setComTab] = useState("mural");
+  const [docTab, setDocTab] = useState("atas");
   const [modal, setModal] = useState(null);
   const [activePie, setActivePie] = useState(0);
   const [toasts, setToasts] = useState([]);
@@ -319,6 +333,10 @@ export default function SRCCCApp() {
               {view === "futebol" && <Futebol T={T} />}
               {view === "piscina" && <Piscina T={T} />}
               {view === "eventos" && <Eventos T={T} openModal={setModal} />}
+              {view === "bar" && <BarClube T={T} barTab={barTab} setBarTab={setBarTab} notify={notify} />}
+              {view === "patrimonio" && <Patrimonio T={T} patTab={patTab} setPatTab={setPatTab} openModal={setModal} />}
+              {view === "comunicacao" && <Comunicacao T={T} comTab={comTab} setComTab={setComTab} notify={notify} />}
+              {view === "documentos" && <Documentos T={T} docTab={docTab} setDocTab={setDocTab} notify={notify} />}
               {view === "acesso" && <Acesso T={T} />}
               {view === "relatorios" && <Relatorios T={T} />}
               {view === "config" && <Config T={T} />}
@@ -835,6 +853,336 @@ function Eventos({ T, openModal }) {
   );
 }
 
+function BarClube({ T, barTab, setBarTab, notify }) {
+  const produtos = ["Cerveja", "Refrigerante", "Água", "Espetinho", "Porção fritas", "Salgado", "Suco", "Água de coco"];
+  return (
+    <div className="view">
+      <div className="kpi-grid">
+        <div className="kpi-card"><div className="label">Comandas abertas</div><div className="value"><KpiNumber value={7} /></div></div>
+        <div className="kpi-card"><div className="label">Faturamento do bar hoje</div><div className="value">R$ <KpiNumber value={612} /></div></div>
+        <div className="kpi-card"><div className="label">Itens com estoque baixo</div><div className="value"><KpiNumber value={2} /></div></div>
+      </div>
+
+      <div className="subtabs">
+        <button className={"subtab" + (barTab === "comandas" ? " active" : "")} onClick={() => setBarTab("comandas")}>Comandas</button>
+        <button className={"subtab" + (barTab === "pdv" ? " active" : "")} onClick={() => setBarTab("pdv")}>PDV rápido</button>
+        <button className={"subtab" + (barTab === "estoque" ? " active" : "")} onClick={() => setBarTab("estoque")}>Estoque</button>
+      </div>
+
+      {barTab === "comandas" && (
+        <Card style={{ padding: 0 }}>
+          <TableWrap>
+            <table>
+              <thead><tr><th>Comanda</th><th>Sócio</th><th>Itens</th><th>Valor</th><th>Status</th><th></th></tr></thead>
+              <tbody>
+                <tr><td className="row-name">#032</td><td>Rogério Antunes Silva</td><td>3</td><td>R$ 47,50</td><td><Pill tone="ok" T={T}>Aberta</Pill></td><td className="table-actions"><button onClick={() => notify("Comanda #032 lançada na mensalidade", "ok")}>Fechar e lançar</button></td></tr>
+                <tr><td className="row-name">#033</td><td>João Pedro Bortoluzzi</td><td>5</td><td>R$ 68,00</td><td><Pill tone="ok" T={T}>Aberta</Pill></td><td className="table-actions"><button onClick={() => notify("Comanda #033 lançada na mensalidade", "ok")}>Fechar e lançar</button></td></tr>
+                <tr><td className="row-name">#034</td><td>Fernando Zanella</td><td>2</td><td>R$ 19,00</td><td><Pill tone="warn" T={T}>Aberta</Pill></td><td className="table-actions"><button onClick={() => notify("Sócio inadimplente — cobrar à vista", "warn")}>Fechar e lançar</button></td></tr>
+                <tr><td className="row-name">#031</td><td>Marta Weber</td><td>2</td><td>R$ 22,00</td><td><Pill tone="neutral" T={T}>Lançada</Pill></td><td className="table-actions"><button>Ver</button></td></tr>
+              </tbody>
+            </table>
+          </TableWrap>
+        </Card>
+      )}
+
+      {barTab === "pdv" && (
+        <div className="grid-2">
+          <Card title="Ponto de venda rápido">
+            <div className="pdv-grid">
+              {produtos.map((p) => (
+                <button key={p} className="pdv-btn" onClick={() => notify(`${p} adicionado à comanda`, "ok")}>{p}</button>
+              ))}
+            </div>
+          </Card>
+          <Card title="Comanda atual — Mesa avulsa">
+            <ul className="simple-list">
+              <li><span className="who">2x Cerveja</span><span className="meta">R$ 18,00</span></li>
+              <li><span className="who">1x Porção fritas</span><span className="meta">R$ 22,00</span></li>
+              <li><span className="who">1x Água</span><span className="meta">R$ 5,00</span></li>
+            </ul>
+            <div className="kv-list" style={{ marginTop: 10 }}>
+              <div className="kv"><span>Total</span><b>R$ 45,00</b></div>
+            </div>
+            <button className="btn-add" style={{ width: "100%", justifyContent: "center", marginTop: 10 }} onClick={() => notify("Comanda vinculada à carteirinha do sócio", "ok")}>Vincular à carteirinha</button>
+          </Card>
+        </div>
+      )}
+
+      {barTab === "estoque" && (
+        <Card style={{ padding: 0 }}>
+          <TableWrap>
+            <table>
+              <thead><tr><th>Produto</th><th>Categoria</th><th>Estoque</th><th>Mínimo</th><th>Status</th></tr></thead>
+              <tbody>
+                <tr><td className="row-name">Cerveja Long Neck</td><td>Bebidas</td><td>84 un</td><td>40 un</td><td><Pill tone="ok" T={T}>OK</Pill></td></tr>
+                <tr><td className="row-name">Refrigerante lata</td><td>Bebidas</td><td>12 un</td><td>30 un</td><td><Pill tone="bad" T={T}>Estoque baixo</Pill></td></tr>
+                <tr><td className="row-name">Água mineral</td><td>Bebidas</td><td>60 un</td><td>20 un</td><td><Pill tone="ok" T={T}>OK</Pill></td></tr>
+                <tr><td className="row-name">Salgadinhos (pacote)</td><td>Petiscos</td><td>8 un</td><td>15 un</td><td><Pill tone="bad" T={T}>Estoque baixo</Pill></td></tr>
+                <tr><td className="row-name">Carvão (kg)</td><td>Insumos</td><td>25 kg</td><td>10 kg</td><td><Pill tone="ok" T={T}>OK</Pill></td></tr>
+              </tbody>
+            </table>
+          </TableWrap>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+function Patrimonio({ T, patTab, setPatTab, openModal }) {
+  return (
+    <div className="view">
+      <div className="kpi-grid">
+        <div className="kpi-card"><div className="label">Ativos cadastrados</div><div className="value"><KpiNumber value={38} /></div></div>
+        <div className="kpi-card"><div className="label">OS em andamento</div><div className="value"><KpiNumber value={3} /></div></div>
+        <div className="kpi-card"><div className="label">Contratos ativos</div><div className="value"><KpiNumber value={3} /></div></div>
+      </div>
+
+      <div className="subtabs">
+        <button className={"subtab" + (patTab === "ativos" ? " active" : "")} onClick={() => setPatTab("ativos")}>Ativos</button>
+        <button className={"subtab" + (patTab === "os" ? " active" : "")} onClick={() => setPatTab("os")}>Ordens de serviço</button>
+        <button className={"subtab" + (patTab === "contratos" ? " active" : "")} onClick={() => setPatTab("contratos")}>Contratos</button>
+      </div>
+
+      {patTab === "ativos" && (
+        <Card style={{ padding: 0 }}>
+          <TableWrap>
+            <table>
+              <thead><tr><th>Ativo</th><th>Categoria</th><th>Aquisição</th><th>Estado</th><th>Última manutenção</th></tr></thead>
+              <tbody>
+                <tr><td className="row-name">Gramado Campo Oficial (11)</td><td>Infraestrutura</td><td>2015</td><td><Pill tone="ok" T={T}>Bom</Pill></td><td>15/08/2026</td></tr>
+                <tr><td className="row-name">Piscina principal</td><td>Infraestrutura</td><td>2009</td><td><Pill tone="warn" T={T}>Regular</Pill></td><td>20/07/2026</td></tr>
+                <tr><td className="row-name">Playground</td><td>Lazer</td><td>2019</td><td><Pill tone="ok" T={T}>Bom</Pill></td><td>10/06/2026</td></tr>
+                <tr><td className="row-name">Iluminação Campo Society</td><td>Infraestrutura</td><td>2021</td><td><Pill tone="ok" T={T}>Bom</Pill></td><td>—</td></tr>
+                <tr><td className="row-name">Cadeiras salão de festas (120 un)</td><td>Mobiliário</td><td>2018</td><td><Pill tone="warn" T={T}>Regular</Pill></td><td>—</td></tr>
+              </tbody>
+            </table>
+          </TableWrap>
+        </Card>
+      )}
+
+      {patTab === "os" && (
+        <>
+          <div className="toolbar">
+            <div />
+            <button className="btn-add" onClick={() => openModal("os")}><Plus size={15} /> Nova ordem de serviço</button>
+          </div>
+          <Card style={{ padding: 0 }}>
+            <TableWrap>
+              <table>
+                <thead><tr><th>OS</th><th>Ativo</th><th>Tipo</th><th>Responsável</th><th>Status</th><th>Data</th></tr></thead>
+                <tbody>
+                  <tr><td className="row-name">OS-014</td><td>Piscina principal</td><td>Corretiva</td><td>Zeladoria</td><td><Pill tone="warn" T={T}>Em andamento</Pill></td><td>28/08/2026</td></tr>
+                  <tr><td className="row-name">OS-013</td><td>Gramado Campo Oficial</td><td>Preventiva</td><td>Jardinagem (terceirizado)</td><td><Pill tone="ok" T={T}>Concluída</Pill></td><td>15/08/2026</td></tr>
+                  <tr><td className="row-name">OS-012</td><td>Playground</td><td>Corretiva</td><td>Zeladoria</td><td><Pill tone="ok" T={T}>Concluída</Pill></td><td>10/06/2026</td></tr>
+                  <tr><td className="row-name">OS-011</td><td>Iluminação Campo Society</td><td>Corretiva</td><td>Eletricista (terceirizado)</td><td><Pill tone="warn" T={T}>Aguardando peça</Pill></td><td>02/09/2026</td></tr>
+                </tbody>
+              </table>
+            </TableWrap>
+          </Card>
+        </>
+      )}
+
+      {patTab === "contratos" && (
+        <Card style={{ padding: 0 }}>
+          <TableWrap>
+            <table>
+              <thead><tr><th>Fornecedor</th><th>Serviço</th><th>Vigência</th><th>Valor mensal</th><th>Status</th></tr></thead>
+              <tbody>
+                <tr><td className="row-name">Jardinagem Silva & Cia</td><td>Manutenção de gramados</td><td>até 12/2026</td><td>R$ 1.200,00</td><td><Pill tone="ok" T={T}>Ativo</Pill></td></tr>
+                <tr><td className="row-name">SegurançaMax</td><td>Vigilância noturna</td><td>até 03/2027</td><td>R$ 2.400,00</td><td><Pill tone="ok" T={T}>Ativo</Pill></td></tr>
+                <tr><td className="row-name">PiscinaClean</td><td>Tratamento de água</td><td>até 06/2027</td><td>R$ 800,00</td><td><Pill tone="ok" T={T}>Ativo</Pill></td></tr>
+              </tbody>
+            </table>
+          </TableWrap>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+function Comunicacao({ T, comTab, setComTab, notify }) {
+  return (
+    <div className="view">
+      <div className="kpi-grid">
+        <div className="kpi-card"><div className="label">Avisos publicados</div><div className="value"><KpiNumber value={12} /></div></div>
+        <div className="kpi-card"><div className="label">Enquetes ativas</div><div className="value"><KpiNumber value={1} /></div></div>
+        <div className="kpi-card"><div className="label">Chamados na ouvidoria</div><div className="value"><KpiNumber value={3} /></div></div>
+      </div>
+
+      <div className="subtabs">
+        <button className={"subtab" + (comTab === "mural" ? " active" : "")} onClick={() => setComTab("mural")}>Mural de avisos</button>
+        <button className={"subtab" + (comTab === "notificacoes" ? " active" : "")} onClick={() => setComTab("notificacoes")}>Notificações</button>
+        <button className={"subtab" + (comTab === "enquetes" ? " active" : "")} onClick={() => setComTab("enquetes")}>Enquetes</button>
+        <button className={"subtab" + (comTab === "ouvidoria" ? " active" : "")} onClick={() => setComTab("ouvidoria")}>Ouvidoria</button>
+      </div>
+
+      {comTab === "mural" && (
+        <>
+          <div className="toolbar">
+            <div />
+            <button className="btn-add" onClick={() => notify("Aviso publicado no mural", "ok")}><Plus size={15} /> Novo aviso</button>
+          </div>
+          <ul className="mural-list">
+            <li><div className="mural-dot" /><div><div className="who">Manutenção da piscina dia 10/09</div><div className="meta">Publicado em 03/09 · Todos os sócios</div></div></li>
+            <li><div className="mural-dot" /><div><div className="who">Inscrições abertas — Torneio Society</div><div className="meta">Publicado em 28/08 · Todos os sócios</div></div></li>
+            <li><div className="mural-dot" /><div><div className="who">Assembleia geral ordinária — 30/09</div><div className="meta">Publicado em 25/08 · Sócios patrimoniais</div></div></li>
+          </ul>
+        </>
+      )}
+
+      {comTab === "notificacoes" && (
+        <Card style={{ padding: 0 }}>
+          <TableWrap>
+            <table>
+              <thead><tr><th>Tipo</th><th>Gatilho</th><th>Canal</th><th>Status</th></tr></thead>
+              <tbody>
+                <tr><td className="row-name">Vencimento de mensalidade</td><td>5 dias antes</td><td>WhatsApp</td><td><Pill tone="ok" T={T}>Ativo</Pill></td></tr>
+                <tr><td className="row-name">Mensalidade em atraso</td><td>No dia do atraso</td><td>WhatsApp + E-mail</td><td><Pill tone="ok" T={T}>Ativo</Pill></td></tr>
+                <tr><td className="row-name">Reserva confirmada</td><td>Imediato</td><td>WhatsApp</td><td><Pill tone="ok" T={T}>Ativo</Pill></td></tr>
+                <tr><td className="row-name">Aniversário do sócio</td><td>No dia</td><td>E-mail</td><td><Pill tone="neutral" T={T}>Inativo</Pill></td></tr>
+              </tbody>
+            </table>
+          </TableWrap>
+        </Card>
+      )}
+
+      {comTab === "enquetes" && (
+        <>
+          <div className="toolbar">
+            <div />
+            <button className="btn-add" onClick={() => notify("Enquete criada", "ok")}><Plus size={15} /> Nova enquete</button>
+          </div>
+          <Card title="Aprovação do novo regulamento do salão de festas">
+            <div className="poll-bar"><div className="poll-fill" style={{ width: "78%" }} /></div>
+            <div className="kv-list"><div className="kv"><span>Sim — 78%</span><span>111 votos</span></div><div className="kv"><span>Não — 22%</span><span>31 votos</span></div></div>
+            <Pill tone="warn" T={T}>Em andamento · encerra 10/09</Pill>
+          </Card>
+          <Card title="Qual dia prefere para o Baile de Primavera?">
+            <div className="poll-bar"><div className="poll-fill" style={{ width: "61%", background: T.gold }} /></div>
+            <div className="kv-list"><div className="kv"><span>Sábado — 61%</span><span>53 votos</span></div><div className="kv"><span>Sexta — 39%</span><span>34 votos</span></div></div>
+            <Pill tone="neutral" T={T}>Encerrada</Pill>
+          </Card>
+        </>
+      )}
+
+      {comTab === "ouvidoria" && (
+        <Card style={{ padding: 0 }}>
+          <TableWrap>
+            <table>
+              <thead><tr><th>Protocolo</th><th>Assunto</th><th>Categoria</th><th>Status</th><th>Data</th></tr></thead>
+              <tbody>
+                <tr><td className="row-name">#0091</td><td>Água da piscina muito fria de manhã</td><td>Reclamação</td><td><Pill tone="warn" T={T}>Em análise</Pill></td><td>01/09</td></tr>
+                <tr><td className="row-name">#0090</td><td>Sugestão: aula de hidroginástica</td><td>Sugestão</td><td><Pill tone="ok" T={T}>Respondido</Pill></td><td>25/08</td></tr>
+                <tr><td className="row-name">#0089</td><td>Parabéns pela organização do torneio</td><td>Elogio</td><td><Pill tone="neutral" T={T}>Arquivado</Pill></td><td>15/08</td></tr>
+              </tbody>
+            </table>
+          </TableWrap>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+function Documentos({ T, docTab, setDocTab, notify }) {
+  return (
+    <div className="view">
+      <div className="subtabs">
+        <button className={"subtab" + (docTab === "atas" ? " active" : "")} onClick={() => setDocTab("atas")}>Atas & Editais</button>
+        <button className={"subtab" + (docTab === "quitacao" ? " active" : "")} onClick={() => setDocTab("quitacao")}>Certidão de quitação</button>
+        <button className={"subtab" + (docTab === "transferencia" ? " active" : "")} onClick={() => setDocTab("transferencia")}>Transferência de título</button>
+        <button className={"subtab" + (docTab === "lgpd" ? " active" : "")} onClick={() => setDocTab("lgpd")}>LGPD</button>
+      </div>
+
+      {docTab === "atas" && (
+        <Card style={{ padding: 0 }}>
+          <TableWrap>
+            <table>
+              <thead><tr><th>Título</th><th>Tipo</th><th>Data</th><th></th></tr></thead>
+              <tbody>
+                <tr><td className="row-name">Ata da Assembleia Geral Ordinária 2025</td><td>Ata</td><td>15/03/2025</td><td className="table-actions"><button onClick={() => notify("Baixando PDF...", "ok")}><Download size={13} /> Baixar</button></td></tr>
+                <tr><td className="row-name">Edital de Convocação — Assembleia 2026</td><td>Edital</td><td>20/08/2026</td><td className="table-actions"><button onClick={() => notify("Baixando PDF...", "ok")}><Download size={13} /> Baixar</button></td></tr>
+                <tr><td className="row-name">Estatuto Social (atualizado)</td><td>Estatuto</td><td>10/01/2024</td><td className="table-actions"><button onClick={() => notify("Baixando PDF...", "ok")}><Download size={13} /> Baixar</button></td></tr>
+                <tr><td className="row-name">Regimento Interno do Salão de Festas</td><td>Regulamento</td><td>05/2023</td><td className="table-actions"><button onClick={() => notify("Baixando PDF...", "ok")}><Download size={13} /> Baixar</button></td></tr>
+              </tbody>
+            </table>
+          </TableWrap>
+        </Card>
+      )}
+
+      {docTab === "quitacao" && (
+        <>
+          <Card title="Emitir certidão de quitação">
+            <div className="form-grid">
+              <div className="field full"><label>Sócio</label><input placeholder="Buscar por nome ou matrícula..." /></div>
+            </div>
+            <button className="btn-add" onClick={() => notify("Certidão de quitação emitida — situação regular", "ok")}>Verificar e emitir certidão</button>
+          </Card>
+          <Card title="Certidões emitidas recentemente" style={{ padding: 0 }}>
+            <TableWrap>
+              <table>
+                <thead><tr><th>Sócio</th><th>Emissão</th><th>Validade</th><th>Status</th></tr></thead>
+                <tbody>
+                  <tr><td className="row-name">Rogério Antunes Silva</td><td>01/09/2026</td><td>30 dias</td><td><Pill tone="ok" T={T}>Válida</Pill></td></tr>
+                  <tr><td className="row-name">Osvaldo Piovesan</td><td>15/08/2026</td><td>30 dias</td><td><Pill tone="neutral" T={T}>Expirada</Pill></td></tr>
+                </tbody>
+              </table>
+            </TableWrap>
+          </Card>
+        </>
+      )}
+
+      {docTab === "transferencia" && (
+        <>
+          <div className="toolbar">
+            <div />
+            <button className="btn-add" onClick={() => notify("Solicitação de transferência registrada", "ok")}><Plus size={15} /> Nova solicitação</button>
+          </div>
+          <Card style={{ padding: 0, marginBottom: 16 }}>
+            <TableWrap>
+              <table>
+                <thead><tr><th>Título</th><th>De</th><th>Para</th><th>Status</th><th>Solicitação</th></tr></thead>
+                <tbody>
+                  <tr><td className="row-name">0119</td><td>Marta Weber</td><td>Cristiane Locatelli</td><td><Pill tone="warn" T={T}>Em análise pela diretoria</Pill></td><td>28/08/2026</td></tr>
+                  <tr><td className="row-name">0034</td><td>Osvaldo Piovesan</td><td>Osvaldo Piovesan Jr. (herdeiro)</td><td><Pill tone="ok" T={T}>Aprovada</Pill></td><td>10/07/2026</td></tr>
+                </tbody>
+              </table>
+            </TableWrap>
+          </Card>
+          <Card title="Como funciona a transferência">
+            <ul className="simple-list">
+              <li><span className="who">1. Quitação de débitos</span><span className="meta">Obrigatório</span></li>
+              <li><span className="who">2. Aprovação da diretoria</span><span className="meta">Até 15 dias</span></li>
+              <li><span className="who">3. Pagamento da taxa de transferência</span><span className="meta">Conforme estatuto</span></li>
+            </ul>
+          </Card>
+        </>
+      )}
+
+      {docTab === "lgpd" && (
+        <>
+          <Card title="Solicitações de dados pessoais" style={{ padding: 0, marginBottom: 16 }}>
+            <TableWrap>
+              <table>
+                <thead><tr><th>Sócio</th><th>Tipo de solicitação</th><th>Status</th><th>Prazo</th></tr></thead>
+                <tbody>
+                  <tr><td className="row-name">Fernando Zanella</td><td>Acesso aos dados</td><td><Pill tone="ok" T={T}>Atendido</Pill></td><td>20/08/2026</td></tr>
+                </tbody>
+              </table>
+            </TableWrap>
+          </Card>
+          <Card title="Política de dados">
+            <p style={{ fontSize: 13, color: "var(--text-soft)", lineHeight: 1.6 }}>
+              Dados pessoais dos sócios e dependentes são usados exclusivamente para gestão do clube (cobrança, controle de acesso e comunicação).
+              Qualquer sócio pode solicitar acesso, correção ou exclusão dos próprios dados por aqui, conforme a LGPD.
+            </p>
+          </Card>
+        </>
+      )}
+    </div>
+  );
+}
+
+
 function Acesso({ T }) {
   return (
     <div className="view">
@@ -1114,7 +1462,8 @@ nav.navlist::-webkit-scrollbar-track{ background:transparent; }
 .kpi-card::after{ content:""; position:absolute; right:-14px; bottom:-14px; width:78px; height:78px; border-radius:50%; background:var(--gold); opacity:.09; }
 
 .grid-2{ display:grid; grid-template-columns:1.4fr 1fr; gap:16px; align-items:start; }
-.card{ background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:20px; margin-bottom:16px; transition:background .35s ease, border-color .35s ease; }
+.grid-2 > div{ min-width:0; }
+.card{ background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:20px; margin-bottom:16px; transition:background .35s ease, border-color .35s ease; min-width:0; }
 .card-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
 .card-head h3{ font-size:15px; font-weight:700; color:var(--green-dark); font-family:'Fraunces',serif; }
 .link{ font-size:12.5px; color:var(--green); font-weight:600; text-decoration:none; }
@@ -1137,6 +1486,28 @@ ul.simple-list .meta{ color:var(--text-soft); font-size:12px; }
 
 .kv-list .kv{ display:flex; justify-content:space-between; align-items:center; font-size:13px; color:var(--text-soft); padding:6px 0; }
 .kv-list .kv b{ color:var(--text); }
+
+/* PDV */
+.pdv-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
+.pdv-btn{
+  background:var(--surface-alt); border:1.5px solid var(--border); border-radius:10px; padding:14px 10px;
+  font-size:13.5px; font-weight:600; color:var(--text); transition:transform .12s, border-color .15s, background .15s;
+}
+.pdv-btn:hover{ border-color:var(--green); background:var(--surface); }
+.pdv-btn:active{ transform:scale(.96); }
+
+/* mural */
+ul.mural-list{ list-style:none; padding:0; margin:0; }
+ul.mural-list li{ display:flex; gap:12px; padding:12px 0; border-bottom:1px solid var(--border); }
+ul.mural-list li:last-child{ border-bottom:none; }
+.mural-dot{ width:8px; height:8px; border-radius:50%; background:var(--gold); margin-top:6px; flex-shrink:0; }
+ul.mural-list .who{ font-weight:600; font-size:13.5px; color:var(--text); }
+ul.mural-list .meta{ font-size:12px; color:var(--text-soft); margin-top:2px; }
+
+/* enquetes */
+.poll-bar{ height:10px; border-radius:6px; background:var(--surface-alt); overflow:hidden; margin-bottom:10px; }
+.poll-fill{ height:100%; background:var(--green); border-radius:6px; animation:pollFill 1s ease-out; }
+@keyframes pollFill{ from{ width:0 !important; } }
 
 .subtabs{ display:flex; gap:4px; border-bottom:1px solid var(--border); margin-bottom:18px; overflow-x:auto; }
 .subtab{ padding:10px 16px; font-size:13.5px; font-weight:600; color:var(--text-soft); border-bottom:2px solid transparent; background:none; border-top:none; border-left:none; border-right:none; white-space:nowrap; transition:color .15s; }
