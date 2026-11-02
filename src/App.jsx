@@ -916,7 +916,7 @@ function Financeiro({ T, finTab, setFinTab, notify, openModal }) {
                 <tr><td>Dependente até 4 anos</td><td><Pill tone="neutral" T={T}>Isento</Pill></td></tr>
                 <tr><td>Dependente de 5 a 15 anos</td><td>R$ 36,74</td></tr>
                 <tr><td>Dependente de 14 a 17 anos</td><td>R$ 55,12</td></tr>
-                <tr><td>Dependente (pais) até 59 anos</td><td>R$ 73,49</td></tr>
+                <tr><td>Dependente (pais) até 60 anos</td><td>R$ 73,49</td></tr>
                 <tr><td>Dependente 60 anos ou mais</td><td>R$ 36,74</td></tr>
                 <tr><td>Carteirinha (emissão/2ª via)</td><td>R$ 20,90</td></tr>
                 <tr><td>Reinclusão de dependente</td><td>R$ 392,62</td></tr>
