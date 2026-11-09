@@ -14,7 +14,7 @@ import {
   Bell, Plus, Download, Send, Eye, Pencil, Flame, Volleyball,
   Landmark, ShieldCheck, Sun, Moon, TrendingUp, TrendingDown, CheckCircle2, Info,
   Coffee, Wrench, Megaphone, FileText, Package, ClipboardList, Vote,
-  MessageCircle, ScrollText, UserCog, ShieldAlert, Trash2
+  MessageCircle, ScrollText, UserCog, ShieldAlert, Trash2, EyeOff, Loader2
 } from "lucide-react";
 
 // ---------------- THEME ----------------
@@ -240,6 +240,8 @@ export default function SRCCCApp() {
   const [mode, setMode] = useState("light");
   const T = THEMES[mode];
   const [loggedIn, setLoggedIn] = useState(false);
+  const [showPw, setShowPw] = useState(false);
+  const [loggingIn, setLoggingIn] = useState(false);
   const [view, setView] = useState("dashboard");
   const [menuOpen, setMenuOpen] = useState(false);
   const [socioTab, setSocioTab] = useState("titulares");
@@ -300,10 +302,23 @@ export default function SRCCCApp() {
   }
 
   function handleLogin() {
-    setLoggedIn(true);
-    setConfetti(true);
-    notify("Bem-vinda de volta, Marisa!", "ok");
-    setTimeout(() => setConfetti(false), 2200);
+    if (loggingIn) return;
+    setLoggingIn(true);
+    setTimeout(() => {
+      setLoggedIn(true);
+      setLoggingIn(false);
+      setConfetti(true);
+      notify("Bem-vinda de volta, Marisa!", "ok");
+      setTimeout(() => setConfetti(false), 2200);
+    }, 900);
+  }
+
+  function onLoginMove(e) {
+    const r = e.currentTarget.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width - 0.5;
+    const y = (e.clientY - r.top) / r.height - 0.5;
+    e.currentTarget.style.setProperty("--tx", x.toFixed(3));
+    e.currentTarget.style.setProperty("--ty", y.toFixed(3));
   }
 
   function goTo(id) { setView(id); setMenuOpen(false); }
@@ -327,7 +342,12 @@ export default function SRCCCApp() {
       <style>{css}</style>
 
       {!loggedIn && (
-        <div className="login-screen">
+        <div className="login-screen" onMouseMove={onLoginMove}>
+          <div className="login-particles" aria-hidden="true">
+            {Array.from({ length: 16 }).map((_, i) => (
+              <span key={i} style={{ left: ((i * 37) % 100) + "%", animationDelay: -(i * 1.7) + "s", animationDuration: 12 + (i % 5) * 3 + "s", width: 4 + (i % 4) * 3, height: 4 + (i % 4) * 3 }} />
+            ))}
+          </div>
           <button className="theme-toggle floating" onClick={() => setMode(mode === "light" ? "dark" : "light")} aria-label="Alternar tema">
             {mode === "light" ? <Moon size={16} /> : <Sun size={16} />}
           </button>
@@ -335,13 +355,22 @@ export default function SRCCCApp() {
             <div className="badge"><span>SRCCC</span></div>
             <h1>Sistema de Gestão do Clube</h1>
             <div className="club-full">Sociedade Recreativa Comercial e Cultural de Constantina</div>
-            <div className="field"><label>Usuário ou e-mail</label><input defaultValue="secretaria@srccc.com.br" /></div>
-            <div className="field"><label>Senha</label><input type="password" defaultValue="senha123" /></div>
+            <div className="field"><label htmlFor="login-user">Usuário ou e-mail</label><input id="login-user" defaultValue="secretaria@srccc.com.br" /></div>
+            <div className="field"><label htmlFor="login-pw">Senha</label>
+              <div className="pw-wrap">
+                <input id="login-pw" type={showPw ? "text" : "password"} defaultValue="senha123" />
+                <button type="button" className="pw-toggle" onClick={() => setShowPw(!showPw)} aria-label={showPw ? "Ocultar senha" : "Mostrar senha"}>
+                  {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </div>
             <div className="login-row">
               <label style={{ display: "flex", alignItems: "center", gap: 6 }}><input type="checkbox" defaultChecked style={{ width: 14, height: 14 }} /> Manter conectado</label>
               <a href="#">Esqueci a senha</a>
             </div>
-            <button className="btn-primary" onClick={handleLogin}>Entrar</button>
+            <button className={"btn-primary" + (loggingIn ? " loading" : "")} onClick={handleLogin} disabled={loggingIn}>
+              {loggingIn ? <><Loader2 size={16} className="spin" /> Entrando…</> : "Entrar"}
+            </button>
             <div className="demo-note">Protótipo de demonstração — clique em "Entrar" para explorar o painel.</div>
             <div className="login-foot">© Clube Comercial · SRCCC — uso interno e restrito</div>
           </div>
@@ -2180,7 +2209,49 @@ tbody tr:hover td:first-child{ box-shadow:inset 3px 0 0 var(--gold); }
 .login-card::before{ border-radius:26px; }
 .login-card::after{ border-radius:24px; }
 
+/* ===== login extras ===== */
+.login-screen{ perspective:1100px; }
+.login-particles{ position:absolute; inset:0; overflow:hidden; pointer-events:none; }
+.login-particles span{
+  position:absolute; bottom:-20px; border-radius:50%;
+  background:radial-gradient(circle, var(--gold-light), color-mix(in srgb, var(--gold) 40%, transparent));
+  opacity:0; animation:particleRise linear infinite;
+}
+@keyframes particleRise{
+  0%{ transform:translate(0,0) scale(.6); opacity:0; }
+  10%{ opacity:.75; }
+  90%{ opacity:.5; }
+  100%{ transform:translate(40px,-108vh) scale(1.2); opacity:0; }
+}
+.login-card{
+  transform:rotateY(calc(var(--tx,0) * 7deg)) rotateX(calc(var(--ty,0) * -7deg));
+  transition:transform .25s var(--ease-out); transform-style:preserve-3d;
+}
+.login-screen::before{ transform:translate(calc(var(--tx,0) * -40px), calc(var(--ty,0) * -40px)); }
+.badge{ position:relative; }
+.badge::after{
+  content:""; position:absolute; inset:-10px; border-radius:50%; border:1.5px solid var(--gold);
+  animation:badgeRing 2.8s ease-out infinite; pointer-events:none;
+}
+@keyframes badgeRing{ 0%{ transform:scale(.9); opacity:.8; } 100%{ transform:scale(1.35); opacity:0; } }
+.field input{ transition:border-color .2s, background .2s, box-shadow .2s, transform .2s var(--ease-out); }
+.field input:focus{ transform:translateY(-1px); }
+.field label{ transition:color .2s; }
+.field:focus-within label{ color:var(--green); }
+.pw-wrap{ position:relative; }
+.pw-wrap input{ padding-right:44px; }
+.pw-toggle{ position:absolute; right:6px; top:50%; transform:translateY(-50%); width:32px; height:32px; border:none; background:none; border-radius:50%; color:var(--text-soft); display:flex; align-items:center; justify-content:center; transition:background .2s, color .2s; }
+.pw-toggle:hover{ background:var(--surface-alt); color:var(--green-dark); }
+.btn-primary{ display:flex; align-items:center; justify-content:center; gap:8px; }
+.btn-primary:disabled{ cursor:progress; opacity:.92; }
+.btn-primary.loading{ background-size:200% 100%; animation:btnLoading 1s linear infinite; }
+@keyframes btnLoading{ 0%{ filter:brightness(1); } 50%{ filter:brightness(1.25); } 100%{ filter:brightness(1); } }
+.spin{ animation:spinIcon .8s linear infinite; }
+@keyframes spinIcon{ to{ transform:rotate(360deg); } }
+.login-card.shake{ animation:shake .4s; }
+
 @media (prefers-reduced-motion: reduce){
+  .login-card{ transform:none !important; }
   *, *::before, *::after{ animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; }
 }
 
