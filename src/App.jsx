@@ -944,7 +944,7 @@ function Financeiro({ T, finTab, setFinTab, notify, openModal }) {
                 <tr><td>Sócio contribuinte</td><td>R$ 155,00</td></tr>
                 <tr><td>Dependente até 3 anos</td><td><Pill tone="neutral" T={T}>Isento</Pill></td></tr>
                 <tr><td>Dependente de 5 a 15 anos</td><td>R$ 36,74</td></tr>
-                <tr><td>Dependente de 14 a 17 anos</td><td>R$ 55,12</td></tr>
+                <tr><td>Dependente de 14 a 27 anos</td><td>R$ 55,12</td></tr>
                 <tr><td>Dependente (pais) até 60 anos</td><td>R$ 73,49</td></tr>
                 <tr><td>Dependente 70 anos ou mais</td><td>R$ 36,74</td></tr>
                 <tr><td>Carteira (emissão/3ª via)</td><td>R$ 20,90</td></tr>
