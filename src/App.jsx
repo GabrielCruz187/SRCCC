@@ -14,7 +14,7 @@ import {
   Bell, Plus, Download, Send, Eye, Pencil, Flame, Volleyball,
   Landmark, ShieldCheck, Sun, Moon, TrendingUp, TrendingDown, CheckCircle2, Info,
   Coffee, Wrench, Megaphone, FileText, Package, ClipboardList, Vote,
-  MessageCircle, ScrollText, UserCog, ShieldAlert, Trash2, EyeOff, Loader2
+  MessageCircle, ScrollText, UserCog, ShieldAlert, Trash2, EyeOff, Loader2, Mail, Pause, Play, Zap, Smartphone
 } from "lucide-react";
 
 // ---------------- THEME ----------------
@@ -712,6 +712,236 @@ function Socios({ T, socioTab, setSocioTab, openModal }) {
   );
 }
 
+// ---------------- COBRANÇA AUTOMÁTICA ----------------
+const brl = (v) => "R$ " + v.toLocaleString("pt-BR", { minimumFractionDigits: 2 });
+const CANAIS = { whatsapp: { label: "WhatsApp", icon: MessageCircle }, email: { label: "E-mail", icon: Mail }, sms: { label: "SMS", icon: Smartphone } };
+const COBRANCA_VARS = ["{nome}", "{valor}", "{vencimento}", "{dias_atraso}", "{link_pix}"];
+const initialRegua = [
+  { id: "d-3", offset: -3, label: "Lembrete amigável", when: "3 dias antes do vencimento", tone: "ok", ativo: true, canais: ["whatsapp"],
+    texto: "Olá, {nome}! 👋 Sua mensalidade de {valor} vence em {vencimento}. Pague com PIX em segundos: {link_pix}" },
+  { id: "d0", offset: 0, label: "No vencimento", when: "No dia do vencimento", tone: "ok", ativo: true, canais: ["whatsapp", "email"],
+    texto: "Oi, {nome}! Hoje vence sua mensalidade ({valor}). Se já pagou, desconsidere. Link de pagamento: {link_pix}" },
+  { id: "d3", offset: 3, label: "Aviso de atraso", when: "3 dias após o vencimento", tone: "warn", ativo: true, canais: ["whatsapp", "email"],
+    texto: "{nome}, identificamos que sua mensalidade de {valor} está em aberto há {dias_atraso} dias. Regularize pelo PIX: {link_pix}" },
+  { id: "d7", offset: 7, label: "Segunda cobrança", when: "7 dias após o vencimento", tone: "warn", ativo: true, canais: ["whatsapp", "email", "sms"],
+    texto: "{nome}, sua mensalidade segue em aberto ({valor}, {dias_atraso} dias). Precisa de ajuda ou quer parcelar? Responda esta mensagem ou pague: {link_pix}" },
+  { id: "d15", offset: 15, label: "Aviso de suspensão", when: "15 dias após o vencimento", tone: "bad", ativo: true, canais: ["email", "sms"],
+    texto: "{nome}, sua pendência de {valor} ({dias_atraso} dias) pode levar à suspensão do uso das dependências do clube. Regularize: {link_pix}" },
+];
+const initialDevedores = [
+  { id: 1, nome: "Ana Paula Rossi", mat: "0288", valor: 155, dias: -3, pausado: false, ultimo: null },
+  { id: 2, nome: "Luciana Bertoldi", mat: "0721", valor: 189, dias: 3, pausado: false, ultimo: null },
+  { id: 3, nome: "Marcos Dalla Costa", mat: "0344", valor: 155, dias: 5, pausado: false, ultimo: "Aviso de atraso · ontem" },
+  { id: 4, nome: "Cristiane Locatelli", mat: "0567", valor: 155, dias: 8, pausado: false, ultimo: "Segunda cobrança · hoje 09:00" },
+  { id: 5, nome: "Ivo Weber (dep.)", mat: "0119-2", valor: 36.74, dias: 12, pausado: true, ultimo: "Segunda cobrança · há 5 dias" },
+  { id: 6, nome: "Paulo Sartori", mat: "0455", valor: 310, dias: 16, pausado: false, ultimo: "Aviso de suspensão · hoje 09:00" },
+  { id: 7, nome: "Fernando Zanella", mat: "0902", valor: 310, dias: 46, pausado: false, ultimo: "Aviso de suspensão · há 31 dias" },
+];
+const initialCobLog = [
+  { id: "l1", hora: "Hoje 09:00", nome: "Cristiane Locatelli", etapa: "Segunda cobrança", canais: ["whatsapp", "email", "sms"], status: "Lido" },
+  { id: "l2", hora: "Hoje 09:00", nome: "Paulo Sartori", etapa: "Aviso de suspensão", canais: ["email", "sms"], status: "Entregue" },
+  { id: "l3", hora: "Ontem 09:00", nome: "Marcos Dalla Costa", etapa: "Aviso de atraso", canais: ["whatsapp", "email"], status: "Lido" },
+  { id: "l4", hora: "Ontem 09:00", nome: "Roberto Mattei", etapa: "Lembrete amigável", canais: ["whatsapp"], status: "Pago após envio" },
+];
+
+function etapaDoDevedor(d, regua) {
+  const ativas = regua.filter((r) => r.ativo);
+  const atual = [...ativas].reverse().find((r) => r.offset <= d.dias);
+  const proxima = ativas.find((r) => r.offset > d.dias);
+  return { atual, proxima };
+}
+function preencher(texto, d) {
+  return texto
+    .replaceAll("{nome}", d.nome.split(" ")[0])
+    .replaceAll("{valor}", brl(d.valor))
+    .replaceAll("{vencimento}", "dia 10")
+    .replaceAll("{dias_atraso}", String(Math.max(d.dias, 0)))
+    .replaceAll("{link_pix}", "srccc.com.br/pix/" + d.mat.replace("-", ""));
+}
+
+function CobrancaAutomatica({ T, notify }) {
+  const [ativa, setAtiva] = useState(true);
+  const [horario, setHorario] = useState("09:00");
+  const [semDomingo, setSemDomingo] = useState(true);
+  const [regua, setRegua] = useState(initialRegua);
+  const [selId, setSelId] = useState("d3");
+  const [devedores, setDevedores] = useState(initialDevedores);
+  const [log, setLog] = useState(initialCobLog);
+  const [recuperado, setRecuperado] = useState(3840);
+  const [rodando, setRodando] = useState(false);
+  const textRef = useRef(null);
+
+  const sel = regua.find((r) => r.id === selId);
+  const amostra = devedores[0] || initialDevedores[0];
+  const totalAberto = devedores.filter((d) => d.dias > 0).reduce((sum, d) => sum + d.valor, 0);
+
+  function patchStep(id, patch) { setRegua((rs) => rs.map((r) => r.id === id ? { ...r, ...patch } : r)); }
+  function toggleCanal(id, canal) {
+    const r = regua.find((x) => x.id === id);
+    const canais = r.canais.includes(canal) ? r.canais.filter((c) => c !== canal) : [...r.canais, canal];
+    if (canais.length === 0) { notify("Mantenha ao menos um canal na etapa", "warn"); return; }
+    patchStep(id, { canais });
+  }
+  function inserirVar(v) {
+    const el = textRef.current;
+    const pos = el ? el.selectionStart : sel.texto.length;
+    patchStep(sel.id, { texto: sel.texto.slice(0, pos) + v + sel.texto.slice(pos) });
+    requestAnimationFrame(() => { if (el) { el.focus(); el.setSelectionRange(pos + v.length, pos + v.length); } });
+  }
+  function enviar(d) {
+    const { atual } = etapaDoDevedor(d, regua);
+    if (!atual) { notify("Nenhuma etapa ativa se aplica a " + d.nome, "warn"); return false; }
+    setLog((l) => [{ id: Math.random().toString(36).slice(2), hora: "Hoje " + horario, nome: d.nome, etapa: atual.label, canais: atual.canais, status: "Enviado" }, ...l]);
+    setDevedores((ds) => ds.map((x) => x.id === d.id ? { ...x, ultimo: atual.label + " · agora" } : x));
+    return true;
+  }
+  function enviarAgora(d) { if (enviar(d)) notify("Cobrança enviada para " + d.nome, "ok"); }
+  function executarRegua() {
+    if (rodando) return;
+    setRodando(true);
+    setTimeout(() => {
+      let n = 0;
+      devedores.filter((d) => !d.pausado).forEach((d) => { if (enviar(d)) n++; });
+      setRodando(false);
+      notify(n + " cobranças enviadas pela régua", "ok");
+    }, 1100);
+  }
+  function marcarPago(d) {
+    setDevedores((ds) => ds.filter((x) => x.id !== d.id));
+    setRecuperado((r) => r + d.valor);
+    notify(d.nome + " pagou — baixa automática via PIX", "ok");
+  }
+
+  return (
+    <>
+      {!ativa && <div className="banner">A cobrança automática está <b>desligada</b>. Nenhuma mensagem será enviada até você reativar.</div>}
+
+      <div className="cob-stats">
+        <div className="cob-stat"><div className="label">Enviadas no mês</div><div className="cob-num">{142 + log.length - initialCobLog.length}</div></div>
+        <div className="cob-stat"><div className="label">Pagaram após cobrança</div><div className="cob-num">64%</div></div>
+        <div className="cob-stat"><div className="label">Recuperado no mês</div><div className="cob-num">{brl(recuperado)}</div></div>
+        <div className="cob-stat"><div className="label">Em aberto agora</div><div className="cob-num">{brl(totalAberto)}</div></div>
+      </div>
+
+      <Card>
+        <div className="cob-master">
+          <div className="cob-master-info">
+            <span className="cob-master-icon"><Zap size={18} /></span>
+            <div>
+              <div className="cob-title">Cobrança automática</div>
+              <div className="cob-sub">O sistema envia as mensagens da régua sozinho, todos os dias no horário escolhido.</div>
+            </div>
+          </div>
+          <div className="cob-master-ctrl">
+            <label className="cob-inline">Horário
+              <select value={horario} onChange={(e) => setHorario(e.target.value)} className="cob-select">
+                {["08:00", "09:00", "10:00", "14:00", "18:00"].map((h) => <option key={h}>{h}</option>)}
+              </select>
+            </label>
+            <label className="cob-inline"><input type="checkbox" checked={semDomingo} onChange={(e) => setSemDomingo(e.target.checked)} /> Pular domingos</label>
+            <button type="button" role="switch" aria-checked={ativa} aria-label="Ativar cobrança automática" className={"switch" + (ativa ? " on" : "")} onClick={() => { setAtiva(!ativa); notify(ativa ? "Cobrança automática desligada" : "Cobrança automática ligada", ativa ? "warn" : "ok"); }}>
+              <span className="switch-thumb" />
+            </button>
+          </div>
+        </div>
+      </Card>
+
+      <div className="grid-2">
+        <div>
+          <Card title="Régua de cobrança" action={<span className="cob-hint">Clique numa etapa para editar</span>}>
+            <ol className="regua">
+              {regua.map((r) => (
+                <li key={r.id} className={"regua-step" + (r.id === selId ? " selected" : "") + (r.ativo ? "" : " off")}>
+                  <span className={"regua-dot tone-" + r.tone} />
+                  <button type="button" className="regua-main" onClick={() => setSelId(r.id)} aria-pressed={r.id === selId}>
+                    <span className="regua-label">{r.label}</span>
+                    <span className="regua-when">{r.when}</span>
+                    <span className="regua-canais">
+                      {r.canais.map((c) => { const I = CANAIS[c].icon; return <span key={c} className="chip mini"><I size={12} />{CANAIS[c].label}</span>; })}
+                    </span>
+                  </button>
+                  <button type="button" role="switch" aria-checked={r.ativo} aria-label={"Etapa " + r.label} className={"switch sm" + (r.ativo ? " on" : "")} onClick={() => patchStep(r.id, { ativo: !r.ativo })}>
+                    <span className="switch-thumb" />
+                  </button>
+                </li>
+              ))}
+            </ol>
+          </Card>
+        </div>
+
+        <div>
+          <Card title={"Mensagem — " + sel.label}>
+            <div className="cob-canais">
+              {Object.entries(CANAIS).map(([k, c]) => { const I = c.icon; const on = sel.canais.includes(k); return (
+                <button key={k} type="button" className={"chip" + (on ? " on" : "")} aria-pressed={on} onClick={() => toggleCanal(sel.id, k)}><I size={13} />{c.label}</button>
+              ); })}
+            </div>
+            <label className="cob-label" htmlFor="cob-texto">Texto da mensagem</label>
+            <textarea id="cob-texto" ref={textRef} className="cob-textarea" rows={4} value={sel.texto} onChange={(e) => patchStep(sel.id, { texto: e.target.value })} />
+            <div className="cob-vars">
+              <span className="cob-hint">Inserir:</span>
+              {COBRANCA_VARS.map((v) => <button key={v} type="button" className="chip mini var" onClick={() => inserirVar(v)}>{v}</button>)}
+            </div>
+            <div className="cob-label" style={{ marginTop: 14 }}>Pré-visualização</div>
+            <div className="wa-preview" aria-live="polite">
+              <div className="wa-bubble">{preencher(sel.texto, amostra)}<span className="wa-time">{horario} ✓✓</span></div>
+            </div>
+            <div className="cob-hint" style={{ marginTop: 8 }}>Exemplo com os dados de {amostra.nome}.</div>
+          </Card>
+        </div>
+      </div>
+
+      <Card title="Fila de cobrança" action={
+        <button className="btn-add" onClick={executarRegua} disabled={!ativa || rodando}>
+          {rodando ? <><Loader2 size={15} className="spin" /> Enviando…</> : <><Send size={15} /> Executar régua agora</>}
+        </button>
+      }>
+        <TableWrap>
+          <table>
+            <thead><tr><th>Sócio</th><th>Valor</th><th>Situação</th><th>Etapa atual</th><th>Próximo envio</th><th>Último contato</th><th>Ação</th></tr></thead>
+            <tbody>
+              {devedores.length === 0 && <tr><td colSpan={7} style={{ textAlign: "center", padding: 28, color: "var(--text-soft)" }}>Nenhuma pendência na fila. 🎉</td></tr>}
+              {devedores.map((d) => {
+                const { atual, proxima } = etapaDoDevedor(d, regua);
+                const prox = d.pausado ? "Pausado" : proxima ? "em " + (proxima.offset - d.dias) + " dia(s) · " + proxima.label : "Escalar à diretoria";
+                return (
+                  <tr key={d.id} style={d.pausado ? { opacity: 0.6 } : undefined}>
+                    <td><div className="name-cell"><MiniAvatar text={d.nome.split(" ").map((w) => w[0]).slice(0, 2).join("")} /><div><div className="row-name">{d.nome}</div><div className="row-sub">Mat. {d.mat}</div></div></div></td>
+                    <td>{brl(d.valor)}</td>
+                    <td>{d.dias < 0 ? <Pill tone="ok" T={T}>Vence em {-d.dias}d</Pill> : <Pill tone={d.dias > 14 ? "bad" : "warn"} T={T}>{d.dias}d em atraso</Pill>}</td>
+                    <td>{atual ? atual.label : <span className="row-sub">—</span>}</td>
+                    <td className="row-sub">{prox}</td>
+                    <td className="row-sub">{d.ultimo || "Nenhum"}</td>
+                    <td className="table-actions">
+                      <button onClick={() => enviarAgora(d)} disabled={!ativa}><Send size={13} />Enviar</button>
+                      <button onClick={() => setDevedores((ds) => ds.map((x) => x.id === d.id ? { ...x, pausado: !x.pausado } : x))}>{d.pausado ? <><Play size={13} />Retomar</> : <><Pause size={13} />Pausar</>}</button>
+                      <button onClick={() => marcarPago(d)}><CheckCircle2 size={13} />Pagou</button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </TableWrap>
+      </Card>
+
+      <Card title="Histórico de envios">
+        <ul className="simple-list">
+          {log.slice(0, 8).map((l) => (
+            <li key={l.id}>
+              <span><span className="who">{l.nome}</span> <span className="meta">· {l.etapa} · {l.canais.map((c) => CANAIS[c].label).join(", ")}</span></span>
+              <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <Pill tone={l.status === "Pago após envio" || l.status === "Lido" ? "ok" : "neutral"} T={T}>{l.status}</Pill>
+                <span className="meta">{l.hora}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      </Card>
+    </>
+  );
+}
+
 function Financeiro({ T, finTab, setFinTab, notify, openModal }) {
   const totalBanco = bankAccounts.reduce((s, a) => s + a.saldo, 0);
   const [contasPagar, setContasPagar] = useState(initialContasPagar);
@@ -751,6 +981,7 @@ function Financeiro({ T, finTab, setFinTab, notify, openModal }) {
         <button className={"subtab" + (finTab === "lancamentos" ? " active" : "")} onClick={() => setFinTab("lancamentos")}>Livro-caixa</button>
         <button className={"subtab" + (finTab === "despesas" ? " active" : "")} onClick={() => setFinTab("despesas")}>Despesas</button>
         <button className={"subtab" + (finTab === "inadimplencia" ? " active" : "")} onClick={() => setFinTab("inadimplencia")}>Inadimplência</button>
+        <button className={"subtab" + (finTab === "cobranca" ? " active" : "")} onClick={() => setFinTab("cobranca")}>Cobrança automática</button>
         <button className={"subtab" + (finTab === "taxas" ? " active" : "")} onClick={() => setFinTab("taxas")}>Tabela de taxas</button>
       </div>
 
@@ -932,6 +1163,8 @@ function Financeiro({ T, finTab, setFinTab, notify, openModal }) {
           </TableWrap>
         </Card>
       )}
+
+      {finTab === "cobranca" && <CobrancaAutomatica T={T} notify={notify} />}
 
       {finTab === "taxas" && (
         <Card title="Taxas e mensalidades vigentes">
@@ -2249,6 +2482,62 @@ tbody tr:hover td:first-child{ box-shadow:inset 3px 0 0 var(--gold); }
 .spin{ animation:spinIcon .8s linear infinite; }
 @keyframes spinIcon{ to{ transform:rotate(360deg); } }
 .login-card.shake{ animation:shake .4s; }
+
+/* ===== cobrança automática ===== */
+.cob-stats{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:16px; }
+.cob-stat{ background:var(--surface); border:1px solid var(--border); border-radius:var(--r-md); padding:14px 16px; box-shadow:var(--shadow-sm); }
+.cob-stat .label{ font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--text-soft); font-weight:600; }
+.cob-num{ font-family:'Fraunces',serif; font-size:24px; font-weight:700; color:var(--kpi-number); margin-top:4px; font-variant-numeric:tabular-nums; }
+.cob-master{ display:flex; align-items:center; justify-content:space-between; gap:20px; flex-wrap:wrap; }
+.cob-master-info{ display:flex; align-items:center; gap:14px; }
+.cob-master-icon{ width:42px; height:42px; border-radius:12px; background:var(--gold-light); color:var(--green-dark); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.cob-title{ font-family:'Fraunces',serif; font-weight:700; font-size:16px; color:var(--green-dark); }
+.cob-sub{ font-size:12.5px; color:var(--text-soft); margin-top:2px; }
+.cob-master-ctrl{ display:flex; align-items:center; gap:18px; flex-wrap:wrap; }
+.cob-inline{ display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text-soft); font-weight:600; }
+.cob-select{ padding:7px 10px; border:1px solid var(--border); border-radius:10px; background:var(--surface-alt); color:var(--text); font-family:inherit; font-size:13px; }
+.cob-hint{ font-size:12px; color:var(--text-soft); }
+.cob-label{ display:block; font-size:12.5px; font-weight:600; color:var(--text-soft); margin-bottom:6px; }
+
+.switch{ width:46px; height:26px; border-radius:999px; border:none; padding:3px; background:var(--border); display:inline-flex; align-items:center; transition:background .25s; flex-shrink:0; }
+.switch.on{ background:var(--green); }
+.switch-thumb{ width:20px; height:20px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.3); transition:transform .3s var(--ease-spring); }
+.switch.on .switch-thumb{ transform:translateX(20px); }
+.switch.sm{ width:38px; height:22px; }
+.switch.sm .switch-thumb{ width:16px; height:16px; }
+.switch.sm.on .switch-thumb{ transform:translateX(16px); }
+
+.regua{ list-style:none; margin:0; padding:0; position:relative; }
+.regua::before{ content:""; position:absolute; left:17px; top:18px; bottom:18px; width:2px; background:var(--border); border-radius:2px; }
+.regua-step{ position:relative; display:flex; align-items:center; gap:10px; padding:4px 0; transition:opacity .2s; }
+.regua-step.off{ opacity:.5; }
+.regua-dot{ width:14px; height:14px; border-radius:50%; margin-left:11px; flex-shrink:0; border:3px solid var(--surface); box-shadow:0 0 0 2px currentColor; z-index:1; }
+.regua-dot.tone-ok{ color:var(--ok); background:var(--ok); }
+.regua-dot.tone-warn{ color:var(--amber); background:var(--amber); }
+.regua-dot.tone-bad{ color:var(--red); background:var(--red); }
+.regua-main{ flex:1; text-align:left; background:none; border:1px solid transparent; border-radius:12px; padding:10px 12px; display:flex; flex-direction:column; gap:2px; transition:background .2s, border-color .2s; color:var(--text); }
+.regua-main:hover{ background:var(--surface-alt); }
+.regua-step.selected .regua-main{ background:color-mix(in srgb, var(--gold) 10%, var(--surface)); border-color:color-mix(in srgb, var(--gold) 55%, var(--border)); }
+.regua-label{ font-weight:700; font-size:14px; }
+.regua-when{ font-size:12px; color:var(--text-soft); }
+.regua-canais{ display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
+
+.chip{ display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:999px; border:1px solid var(--border); background:var(--surface); color:var(--text-soft); font-size:12.5px; font-weight:600; transition:all .2s; }
+.chip.mini{ padding:2px 8px; font-size:11px; gap:4px; background:var(--surface-alt); }
+.chip.var{ font-family:ui-monospace,Consolas,monospace; cursor:pointer; }
+.chip.var:hover{ border-color:var(--green); color:var(--green-dark); }
+.chip.on{ background:var(--green-dark); border-color:var(--green-dark); color:var(--gold-light); }
+.cob-canais{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+.cob-textarea{ width:100%; resize:vertical; padding:12px 14px; border:1px solid var(--border); border-radius:12px; background:var(--surface-alt); color:var(--text); font-family:inherit; font-size:13.5px; line-height:1.5; outline:none; transition:border-color .2s, box-shadow .2s, background .2s; }
+.cob-textarea:focus{ border-color:var(--green); background:var(--surface); box-shadow:var(--ring); }
+.cob-vars{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:8px; }
+.wa-preview{ background:color-mix(in srgb, var(--green) 10%, var(--surface-alt)); border-radius:14px; padding:16px; }
+.wa-bubble{ position:relative; max-width:92%; background:var(--surface); color:var(--text); border-radius:4px 14px 14px 14px; padding:10px 12px 22px; font-size:13.5px; line-height:1.45; box-shadow:var(--shadow-sm); word-break:break-word; animation:riseIn .35s var(--ease-out); }
+.wa-time{ position:absolute; right:10px; bottom:5px; font-size:10.5px; color:var(--text-soft); }
+.table-actions button:disabled, .btn-add:disabled{ opacity:.45; cursor:not-allowed; box-shadow:none; transform:none; }
+.table-actions button svg{ vertical-align:-2px; margin-right:3px; }
+@media (max-width:1080px){ .cob-stats{ grid-template-columns:repeat(2,1fr); } }
+@media (max-width:640px){ .cob-stats{ gap:10px; } .cob-master-ctrl{ width:100%; justify-content:space-between; } }
 
 @media (prefers-reduced-motion: reduce){
   .login-card{ transform:none !important; }
