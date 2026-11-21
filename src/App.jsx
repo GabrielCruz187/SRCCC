@@ -14,7 +14,7 @@ import {
   Bell, Plus, Download, Send, Eye, Pencil, Flame, Volleyball,
   Landmark, ShieldCheck, Sun, Moon, TrendingUp, TrendingDown, CheckCircle2, Info,
   Coffee, Wrench, Megaphone, FileText, Package, ClipboardList, Vote,
-  MessageCircle, ScrollText, UserCog, ShieldAlert, Trash2, EyeOff, Loader2, Mail, Pause, Play, Zap, Smartphone
+  MessageCircle, ScrollText, UserCog, ShieldAlert, Trash2, EyeOff, Loader2, Mail, Pause, Play, Zap, Smartphone, ChevronLeft, ChevronRight
 } from "lucide-react";
 
 // ---------------- THEME ----------------
@@ -212,6 +212,7 @@ const NAV = [
   { group: "Associados", items: [{ id: "socios", label: "Sócios & Dependentes", icon: Users }] },
   { group: "Financeiro", items: [{ id: "financeiro", label: "Mensalidades & Taxas", icon: Wallet, badge: 24 }] },
   { group: "Espaços & Atividades", items: [
+      { id: "agenda", label: "Calendário Unificado", icon: CalendarDays },
       { id: "reservas", label: "Reservas de Espaços", icon: CalendarDays },
       { id: "futebol", label: "Futebol (Campo 11/7)", icon: Trophy },
       { id: "piscina", label: "Piscina & Lazer", icon: Waves },
@@ -229,7 +230,7 @@ const NAV = [
     ] },
 ];
 const TITLES = {
-  dashboard: "Dashboard", socios: "Sócios & Dependentes", financeiro: "Mensalidades & Taxas",
+  dashboard: "Dashboard", agenda: "Calendário Unificado", socios: "Sócios & Dependentes", financeiro: "Mensalidades & Taxas",
   reservas: "Reservas de Espaços", futebol: "Futebol — Campo 11 e 7", piscina: "Piscina & Lazer",
   eventos: "Eventos & Convidados", bar: "Bar & Comandas", patrimonio: "Ativos & Manutenção",
   comunicacao: "Mural & Avisos", documentos: "Documentos",
@@ -428,6 +429,7 @@ export default function SRCCCApp() {
               {view === "dashboard" && <Dashboard T={T} goTo={goTo} statusData={statusData} activePie={activePie} setActivePie={setActivePie} />}
               {view === "socios" && <Socios T={T} socioTab={socioTab} setSocioTab={setSocioTab} openModal={setModal} />}
               {view === "financeiro" && <Financeiro T={T} finTab={finTab} setFinTab={setFinTab} notify={notify} openModal={setModal} />}
+              {view === "agenda" && <Agenda T={T} notify={notify} openModal={setModal} />}
               {view === "reservas" && <Reservas T={T} openModal={setModal} notify={notify} />}
               {view === "futebol" && <Futebol T={T} />}
               {view === "piscina" && <Piscina T={T} />}
@@ -1212,6 +1214,224 @@ function Financeiro({ T, finTab, setFinTab, notify, openModal }) {
           </div>
         );
       })()}
+    </div>
+  );
+}
+
+// ---------------- CALENDÁRIO UNIFICADO ----------------
+const CAT = {
+  reserva: { label: "Reservas", color: "#2E8B57" },
+  evento: { label: "Eventos", color: "#E7B824" },
+  futebol: { label: "Futebol", color: "#3B7DD8" },
+  piscina: { label: "Piscina", color: "#1FA2A6" },
+  manutencao: { label: "Manutenção", color: "#D9822B" },
+};
+const ESPACOS = ["Salão de Festas", "Churrasqueira 1", "Churrasqueira 2", "Quadra Poliesportiva", "Campo Society (7)", "Campo Oficial (11)", "Piscina"];
+const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+const DIAS_SEM = ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado"];
+const pad2 = (n) => String(n).padStart(2, "0");
+const dkey = (d) => d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate());
+const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+const fmtH = (h) => pad2(h) + "h";
+
+function buildAgendaSeed(today) {
+  const ev = [];
+  let id = 1;
+  const add = (off, cat, titulo, espaco, ini, fim, resp, status = "confirmada") =>
+    ev.push({ id: id++, dia: dkey(addDays(today, off)), cat, titulo, espaco, ini, fim, resp, status });
+  add(0, "reserva", "Churrasco de família", "Churrasqueira 1", 18, 22, "Rogério Antunes Silva");
+  add(0, "reserva", "Treino de vôlei", "Quadra Poliesportiva", 20, 21, "João Pedro Bortoluzzi");
+  add(1, "futebol", "Treino categoria de base", "Campo Oficial (11)", 18, 20, "Escolinha SRCCC");
+  add(1, "manutencao", "Limpeza e tratamento da água", "Piscina", 7, 10, "Equipe de manutenção");
+  add(2, "reserva", "Racha de quinta", "Campo Society (7)", 19, 20, "Fernando Zanella", "pendente");
+  add(2, "reserva", "Aniversário infantil", "Churrasqueira 2", 14, 19, "Cristiane Locatelli");
+  add(3, "evento", "Torneio Society", "Campo Society (7)", 9, 18, "Diretoria de esportes");
+  add(4, "futebol", "Campeonato Municipal — rodada", "Campo Oficial (11)", 15, 17, "Liga Municipal");
+  add(5, "reserva", "Festa de formatura", "Salão de Festas", 19, 23, "Marta Weber");
+  add(6, "manutencao", "Troca de refletores", "Campo Oficial (11)", 8, 12, "Equipe de manutenção");
+  add(7, "evento", "Reunião de diretoria", "Salão de Festas", 19, 21, "Diretoria", "pendente");
+  add(9, "evento", "Baile de Primavera", "Salão de Festas", 20, 24, "Comissão de eventos");
+  add(9, "reserva", "Churrasco pós-jogo", "Churrasqueira 1", 12, 16, "Paulo Sartori");
+  add(12, "reserva", "Confraternização de empresa", "Salão de Festas", 18, 23, "Luciana Bertoldi");
+  add(15, "futebol", "Jogo-treino veteranos", "Campo Oficial (11)", 9, 11, "Veteranos");
+  add(-2, "reserva", "Reunião de família", "Churrasqueira 2", 12, 17, "Marcos Dalla Costa");
+  for (let off = -30; off <= 45; off++) {
+    const wd = addDays(today, off).getDay();
+    if (wd === 1 || wd === 3) add(off, "piscina", "Hidroginástica", "Piscina", 8, 9, "Prof. Camila");
+  }
+  return ev;
+}
+function acharConflito(events, dia, espaco, ini, fim) {
+  return events.find((e) => e.dia === dia && e.espaco === espaco && ini < e.fim && fim > e.ini);
+}
+
+function Agenda({ T, notify, openModal }) {
+  const [today] = useState(() => new Date());
+  const [events, setEvents] = useState(() => buildAgendaSeed(today));
+  const [foco, setFoco] = useState(() => new Date(today.getFullYear(), today.getMonth(), today.getDate()));
+  const [sel, setSel] = useState(() => dkey(today));
+  const [modo, setModo] = useState("mes");
+  const [filtros, setFiltros] = useState({ reserva: true, evento: true, futebol: true, piscina: true, manutencao: true });
+  const [form, setForm] = useState({ espaco: ESPACOS[0], ini: 18, fim: 20, resp: "" });
+
+  const hojeKey = dkey(today);
+  const visiveis = useMemo(() => events.filter((e) => filtros[e.cat]), [events, filtros]);
+  const porDia = useMemo(() => {
+    const m = {};
+    visiveis.forEach((e) => { (m[e.dia] = m[e.dia] || []).push(e); });
+    Object.values(m).forEach((arr) => arr.sort((a, b) => a.ini - b.ini));
+    return m;
+  }, [visiveis]);
+
+  let dias;
+  let titulo;
+  if (modo === "mes") {
+    const primeiro = new Date(foco.getFullYear(), foco.getMonth(), 1);
+    const offset = primeiro.getDay();
+    const total = Math.ceil((offset + new Date(foco.getFullYear(), foco.getMonth() + 1, 0).getDate()) / 7) * 7;
+    dias = Array.from({ length: total }).map((_, i) => addDays(primeiro, i - offset));
+    titulo = MESES[foco.getMonth()] + " de " + foco.getFullYear();
+  } else {
+    const ini = addDays(foco, -foco.getDay());
+    dias = Array.from({ length: 7 }).map((_, i) => addDays(ini, i));
+    const fim = dias[6];
+    titulo = ini.getDate() + " " + MESES[ini.getMonth()].slice(0, 3) + " — " + fim.getDate() + " " + MESES[fim.getMonth()].slice(0, 3) + " " + fim.getFullYear();
+  }
+
+  function mover(dir) {
+    if (modo === "mes") setFoco(new Date(foco.getFullYear(), foco.getMonth() + dir, 1));
+    else setFoco(addDays(foco, 7 * dir));
+  }
+  function irHoje() { setFoco(new Date(today.getFullYear(), today.getMonth(), today.getDate())); setSel(hojeKey); }
+
+  const selDate = new Date(sel + "T12:00:00");
+  const doDia = porDia[sel] || [];
+  const conflito = acharConflito(events, sel, form.espaco, form.ini, form.fim);
+  const horaInvalida = form.fim <= form.ini;
+  const contagem = (cat) => events.filter((e) => e.cat === cat).length;
+  const mesAtual = events.filter((e) => { const d = new Date(e.dia + "T12:00:00"); return d.getMonth() === foco.getMonth() && d.getFullYear() === foco.getFullYear(); }).length;
+
+  function reservar(ev) {
+    ev.preventDefault();
+    if (conflito || horaInvalida) return;
+    const novo = { id: Date.now(), dia: sel, cat: "reserva", titulo: "Reserva — " + form.espaco, espaco: form.espaco, ini: form.ini, fim: form.fim, resp: form.resp.trim() || "Secretaria", status: "confirmada" };
+    setEvents((es) => [...es, novo]);
+    setForm((f) => ({ ...f, resp: "" }));
+    notify("Reserva criada: " + form.espaco + ", " + fmtH(form.ini) + "–" + fmtH(form.fim), "ok");
+  }
+  function cancelar(e) {
+    setEvents((es) => es.filter((x) => x.id !== e.id));
+    notify("Cancelado: " + e.titulo, "warn");
+  }
+
+  const horas = Array.from({ length: 19 }).map((_, i) => i + 6);
+
+  return (
+    <div className="view">
+      <div className="toolbar">
+        <div className="cal-nav">
+          <button className="icon-btn cal-arrow" onClick={() => mover(-1)} aria-label={modo === "mes" ? "Mês anterior" : "Semana anterior"}><ChevronLeft size={18} /></button>
+          <h3 className="cal-title">{titulo}</h3>
+          <button className="icon-btn cal-arrow" onClick={() => mover(1)} aria-label={modo === "mes" ? "Próximo mês" : "Próxima semana"}><ChevronRight size={18} /></button>
+          <button className="btn-ghost" onClick={irHoje}>Hoje</button>
+        </div>
+        <div className="cal-actions">
+          <div className="seg" role="group" aria-label="Modo de visualização">
+            <button className={modo === "mes" ? "on" : ""} aria-pressed={modo === "mes"} onClick={() => setModo("mes")}>Mês</button>
+            <button className={modo === "semana" ? "on" : ""} aria-pressed={modo === "semana"} onClick={() => setModo("semana")}>Semana</button>
+          </div>
+          <button className="btn-add" onClick={() => openModal("reserva")}><Plus size={15} /> Nova reserva</button>
+        </div>
+      </div>
+
+      <div className="cal-legend" role="group" aria-label="Filtrar por categoria">
+        {Object.entries(CAT).map(([k, c]) => (
+          <button key={k} type="button" className={"cal-filter" + (filtros[k] ? " on" : "")} aria-pressed={filtros[k]} onClick={() => setFiltros((f) => ({ ...f, [k]: !f[k] }))} style={{ "--c": c.color }}>
+            <span className="cal-dot" />{c.label}<b>{contagem(k)}</b>
+          </button>
+        ))}
+        <span className="cob-hint cal-count">{mesAtual} compromissos em {MESES[foco.getMonth()]}</span>
+      </div>
+
+      <div className="cal-layout">
+        <div className="card cal-card">
+          {modo === "mes" && (
+            <div className="cal-weekhead" aria-hidden="true">
+              {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((d) => <span key={d}>{d}</span>)}
+            </div>
+          )}
+          <div className={modo === "mes" ? "cal-grid" : "cal-week"}>
+            {dias.map((d) => {
+              const k = dkey(d);
+              const evs = porDia[k] || [];
+              const fora = modo === "mes" && d.getMonth() !== foco.getMonth();
+              const max = modo === "mes" ? 3 : 99;
+              return (
+                <button key={k} type="button" onClick={() => setSel(k)} aria-pressed={k === sel}
+                  aria-label={d.getDate() + " de " + MESES[d.getMonth()] + ", " + evs.length + " compromissos"}
+                  className={"cal-day" + (k === sel ? " sel" : "") + (k === hojeKey ? " today" : "") + (fora ? " out" : "")}>
+                  <span className="cal-daynum">{modo === "semana" && <em>{DIAS_SEM[d.getDay()].slice(0, 3)}</em>}<i>{d.getDate()}</i></span>
+                  <span className="cal-evs">
+                    {evs.slice(0, max).map((e) => (
+                      <span key={e.id} className={"cal-ev" + (e.status === "pendente" ? " pend" : "")} style={{ "--c": CAT[e.cat].color }} title={e.titulo + " · " + e.espaco + " · " + fmtH(e.ini) + "–" + fmtH(e.fim)}>
+                        <span className="cal-ev-time">{fmtH(e.ini)}</span><span className="cal-ev-t">{e.titulo}</span>
+                      </span>
+                    ))}
+                    {evs.length > max && <span className="cal-more">+{evs.length - max} mais</span>}
+                    {evs.length > 0 && <span className="cal-dots" aria-hidden="true">{evs.slice(0, 4).map((e) => <span key={e.id} style={{ background: CAT[e.cat].color }} />)}</span>}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <aside className="cal-side">
+          <Card title={DIAS_SEM[selDate.getDay()] + ", " + selDate.getDate() + " de " + MESES[selDate.getMonth()]} action={sel === hojeKey ? <Pill tone="ok" T={T}>Hoje</Pill> : null}>
+            {doDia.length === 0 && <div className="cal-empty"><CalendarDays size={26} /><div>Dia livre</div><span>Nenhum compromisso neste dia.</span></div>}
+            <ul className="cal-list">
+              {doDia.map((e) => (
+                <li key={e.id} style={{ "--c": CAT[e.cat].color }}>
+                  <span className="cal-bar" />
+                  <div className="cal-li-main">
+                    <div className="cal-li-time">{fmtH(e.ini)} — {fmtH(e.fim)} {e.status === "pendente" && <Pill tone="warn" T={T}>Pendente</Pill>}</div>
+                    <div className="cal-li-title">{e.titulo}</div>
+                    <div className="cal-li-meta">{e.espaco} · {e.resp}</div>
+                  </div>
+                  <button className="icon-btn cal-cancel" onClick={() => cancelar(e)} aria-label={"Cancelar " + e.titulo} title="Cancelar"><X size={15} /></button>
+                </li>
+              ))}
+            </ul>
+          </Card>
+
+          <Card title="Reservar neste dia">
+            <form onSubmit={reservar} className="cal-form">
+              <div className="field"><label htmlFor="ag-esp">Espaço</label>
+                <select id="ag-esp" value={form.espaco} onChange={(e) => setForm({ ...form, espaco: e.target.value })}>
+                  {ESPACOS.map((s) => <option key={s}>{s}</option>)}
+                </select>
+              </div>
+              <div className="cal-times">
+                <div className="field"><label htmlFor="ag-ini">Início</label>
+                  <select id="ag-ini" value={form.ini} onChange={(e) => setForm({ ...form, ini: Number(e.target.value) })}>{horas.map((h) => <option key={h} value={h}>{fmtH(h)}</option>)}</select>
+                </div>
+                <div className="field"><label htmlFor="ag-fim">Fim</label>
+                  <select id="ag-fim" value={form.fim} onChange={(e) => setForm({ ...form, fim: Number(e.target.value) })}>{horas.concat(24).map((h) => <option key={h} value={h}>{fmtH(h)}</option>)}</select>
+                </div>
+              </div>
+              <div className="field"><label htmlFor="ag-resp">Sócio responsável</label>
+                <input id="ag-resp" value={form.resp} onChange={(e) => setForm({ ...form, resp: e.target.value })} placeholder="Nome do sócio" />
+              </div>
+              {horaInvalida && <div className="cal-alert warn" role="alert">O horário final precisa ser depois do inicial.</div>}
+              {!horaInvalida && conflito && (
+                <div className="cal-alert bad" role="alert"><ShieldAlert size={15} /> <span>Conflito: <b>{conflito.titulo}</b> ocupa {conflito.espaco} das {fmtH(conflito.ini)} às {fmtH(conflito.fim)}.</span></div>
+              )}
+              {!horaInvalida && !conflito && <div className="cal-alert ok"><CheckCircle2 size={15} /> <span>Horário livre.</span></div>}
+              <button className="btn-add" type="submit" disabled={!!conflito || horaInvalida} style={{ width: "100%", justifyContent: "center" }}><Plus size={15} /> Confirmar reserva</button>
+            </form>
+          </Card>
+        </aside>
+      </div>
     </div>
   );
 }
@@ -2538,6 +2758,91 @@ tbody tr:hover td:first-child{ box-shadow:inset 3px 0 0 var(--gold); }
 .table-actions button svg{ vertical-align:-2px; margin-right:3px; }
 @media (max-width:1080px){ .cob-stats{ grid-template-columns:repeat(2,1fr); } }
 @media (max-width:640px){ .cob-stats{ gap:10px; } .cob-master-ctrl{ width:100%; justify-content:space-between; } }
+
+/* ===== calendário unificado ===== */
+.cal-nav{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.cal-title{ font-family:'Fraunces',serif; font-size:20px; color:var(--green-dark); text-transform:capitalize; min-width:190px; text-align:center; margin:0; }
+.cal-arrow{ border:1px solid var(--border); background:var(--surface); }
+.cal-actions{ display:flex; align-items:center; gap:10px; }
+.seg{ display:inline-flex; padding:3px; border-radius:999px; background:var(--surface-alt); border:1px solid var(--border); }
+.seg button{ border:none; background:none; padding:6px 14px; border-radius:999px; font-size:13px; font-weight:600; color:var(--text-soft); transition:all .2s; }
+.seg button.on{ background:var(--surface); color:var(--green-dark); box-shadow:var(--shadow-md); }
+.cal-legend{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
+.cal-count{ margin-left:auto; }
+.cal-filter{ display:inline-flex; align-items:center; gap:7px; padding:6px 12px; border-radius:999px; border:1px solid var(--border); background:var(--surface); color:var(--text-soft); font-size:12.5px; font-weight:600; transition:all .2s; }
+.cal-filter b{ font-weight:700; font-size:11px; background:var(--surface-alt); padding:1px 7px; border-radius:999px; }
+.cal-filter .cal-dot{ width:9px; height:9px; border-radius:50%; background:var(--c); }
+.cal-filter:not(.on){ opacity:.55; }
+.cal-filter:not(.on) .cal-dot{ background:transparent; box-shadow:inset 0 0 0 2px var(--c); }
+.cal-filter.on{ color:var(--text); border-color:color-mix(in srgb, var(--c) 55%, var(--border)); background:color-mix(in srgb, var(--c) 9%, var(--surface)); }
+
+.cal-layout{ display:grid; grid-template-columns:minmax(0,1fr) 340px; gap:16px; align-items:start; }
+.cal-card{ padding:14px; }
+.cal-weekhead{ display:grid; grid-template-columns:repeat(7,1fr); gap:6px; margin-bottom:6px; }
+.cal-weekhead span{ text-align:center; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--text-soft); padding:4px 0; }
+.cal-grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:6px; }
+.cal-week{ display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:8px; }
+.cal-day{
+  position:relative; min-height:104px; padding:8px; border-radius:12px; text-align:left; display:flex; flex-direction:column; gap:6px;
+  background:var(--surface); border:1px solid color-mix(in srgb, var(--border) 80%, transparent); color:var(--text);
+  transition:background .2s, border-color .2s, transform .2s var(--ease-out), box-shadow .2s; min-width:0; overflow:hidden;
+}
+.cal-week .cal-day{ min-height:320px; }
+.cal-day:hover{ background:var(--surface-alt); transform:translateY(-1px); }
+.cal-day.out{ opacity:.45; background:transparent; }
+.cal-day.sel{ border-color:var(--green); box-shadow:0 0 0 3px color-mix(in srgb, var(--green) 18%, transparent); }
+.cal-daynum{ display:flex; align-items:center; justify-content:space-between; font-size:13px; font-weight:700; }
+.cal-daynum em{ font-style:normal; font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--text-soft); font-weight:600; }
+.cal-daynum i{ font-style:normal; width:26px; height:26px; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; }
+.cal-day.today .cal-daynum i{ background:var(--green-dark); color:var(--gold-light); }
+.cal-evs{ display:flex; flex-direction:column; gap:3px; min-width:0; }
+.cal-ev{
+  display:flex; align-items:center; gap:5px; font-size:11px; line-height:1.25; padding:3px 6px; border-radius:6px; min-width:0;
+  background:color-mix(in srgb, var(--c) 16%, var(--surface)); border-left:3px solid var(--c); color:var(--text);
+}
+.cal-ev.pend{ background:repeating-linear-gradient(135deg, color-mix(in srgb, var(--c) 14%, var(--surface)) 0 6px, transparent 6px 12px); border-left-style:dashed; }
+.cal-ev-time{ font-weight:700; flex-shrink:0; font-variant-numeric:tabular-nums; color:var(--text-soft); }
+.cal-ev-t{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.cal-more{ font-size:11px; font-weight:600; color:var(--text-soft); padding-left:4px; }
+.cal-dots{ display:none; gap:3px; }
+.cal-dots span{ width:6px; height:6px; border-radius:50%; }
+
+.cal-side{ display:flex; flex-direction:column; position:sticky; top:84px; }
+.cal-side .card-head h3{ text-transform:capitalize; }
+.cal-empty{ text-align:center; padding:18px 8px; color:var(--text-soft); display:flex; flex-direction:column; align-items:center; gap:4px; }
+.cal-empty div{ font-weight:700; color:var(--text); }
+.cal-empty span{ font-size:12.5px; }
+.cal-list{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px; }
+.cal-list li{ display:flex; align-items:stretch; gap:10px; padding:10px; border-radius:12px; background:var(--surface-alt); animation:riseIn .35s var(--ease-out) backwards; }
+.cal-bar{ width:4px; border-radius:4px; background:var(--c); flex-shrink:0; }
+.cal-li-main{ flex:1; min-width:0; }
+.cal-li-time{ font-size:12px; font-weight:700; color:var(--text-soft); display:flex; gap:8px; align-items:center; }
+.cal-li-title{ font-weight:700; font-size:14px; margin-top:2px; }
+.cal-li-meta{ font-size:12px; color:var(--text-soft); margin-top:1px; }
+.cal-cancel{ align-self:flex-start; width:28px; height:28px; }
+.cal-cancel:hover{ color:var(--red); }
+.cal-form .field{ margin-bottom:12px; }
+.cal-times{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.cal-alert{ display:flex; gap:8px; align-items:flex-start; padding:10px 12px; border-radius:10px; font-size:12.5px; margin-bottom:12px; line-height:1.4; }
+.cal-alert svg{ flex-shrink:0; margin-top:1px; }
+.cal-alert.ok{ background:var(--ok-bg); color:var(--ok); }
+.cal-alert.warn{ background:var(--amber-bg); color:var(--amber); }
+.cal-alert.bad{ background:var(--red-bg); color:var(--red); }
+
+@media (max-width:1180px){ .cal-layout{ grid-template-columns:1fr; } .cal-side{ position:static; } }
+@media (max-width:860px){
+  .cal-week{ grid-template-columns:1fr; }
+  .cal-week .cal-day{ min-height:0; }
+}
+@media (max-width:640px){
+  .cal-title{ min-width:0; font-size:17px; }
+  .cal-grid{ gap:3px; }
+  .cal-day{ min-height:56px; padding:5px; align-items:center; }
+  .cal-grid .cal-ev, .cal-grid .cal-more{ display:none; }
+  .cal-grid .cal-dots{ display:flex; }
+  .cal-grid .cal-daynum{ justify-content:center; }
+  .cal-count{ margin-left:0; width:100%; }
+}
 
 @media (prefers-reduced-motion: reduce){
   .login-card{ transform:none !important; }
