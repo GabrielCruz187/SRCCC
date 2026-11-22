@@ -1027,7 +1027,7 @@ function Financeiro({ T, finTab, setFinTab, notify, openModal }) {
           <Card style={{ padding: 0 }}>
             <TableWrap>
               <table>
-                <thead><tr><th>Fornecedores</th><th>Categoria</th><th>Vencimento</th><th>Valor</th><th>Conta prevista</th><th>Status</th><th></th></tr></thead>
+                <thead><tr><th>Fornecedores:</th><th>Categoria</th><th>Vencimento</th><th>Valor</th><th>Conta prevista</th><th>Status</th><th></th></tr></thead>
                 <tbody>
                   {contasPagar.map((c) => (
                     <tr key={c.id}>
