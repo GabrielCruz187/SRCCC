@@ -14,7 +14,7 @@ import {
   Bell, Plus, Download, Send, Eye, Pencil, Flame, Volleyball,
   Landmark, ShieldCheck, Sun, Moon, TrendingUp, TrendingDown, CheckCircle2, Info,
   Coffee, Wrench, Megaphone, FileText, Package, ClipboardList, Vote,
-  MessageCircle, ScrollText, UserCog, ShieldAlert, Trash2, EyeOff, Loader2, Mail, Pause, Play, Zap, Smartphone, ChevronLeft, ChevronRight
+  MessageCircle, ScrollText, UserCog, ShieldAlert, Trash2, EyeOff, Loader2, Mail, Pause, Play, Zap, Smartphone, ChevronLeft, ChevronRight, Minus, ArrowUpDown
 } from "lucide-react";
 
 // ---------------- THEME ----------------
@@ -1592,14 +1592,227 @@ function Eventos({ T, openModal }) {
   );
 }
 
+// ---------------- ESTOQUE DO BAR ----------------
+const ESTOQUE_CATS = ["Bebidas", "Petiscos", "Insumos", "Descartáveis"];
+const initialEstoque = [
+  { id: 1, nome: "Cerveja Long Neck", cat: "Bebidas", un: "un", qtd: 84, min: 40, max: 160, custo: 4.2, venda: 9.0 },
+  { id: 2, nome: "Refrigerante lata", cat: "Bebidas", un: "un", qtd: 12, min: 30, max: 120, custo: 2.6, venda: 6.0 },
+  { id: 3, nome: "Água mineral", cat: "Bebidas", un: "un", qtd: 60, min: 20, max: 100, custo: 1.1, venda: 4.0 },
+  { id: 4, nome: "Água de coco", cat: "Bebidas", un: "un", qtd: 22, min: 18, max: 60, custo: 3.4, venda: 8.0 },
+  { id: 5, nome: "Polpa de suco (kg)", cat: "Insumos", un: "kg", qtd: 9, min: 6, max: 24, custo: 12.5, venda: 0 },
+  { id: 6, nome: "Salgadinhos (pacote)", cat: "Petiscos", un: "pct", qtd: 8, min: 15, max: 50, custo: 3.8, venda: 8.0 },
+  { id: 7, nome: "Espetinho de carne", cat: "Petiscos", un: "un", qtd: 46, min: 30, max: 100, custo: 5.5, venda: 12.0 },
+  { id: 8, nome: "Batata congelada (kg)", cat: "Insumos", un: "kg", qtd: 14, min: 10, max: 40, custo: 11.9, venda: 0 },
+  { id: 9, nome: "Carvão (kg)", cat: "Insumos", un: "kg", qtd: 25, min: 10, max: 60, custo: 4.9, venda: 0 },
+  { id: 10, nome: "Gelo em barra", cat: "Insumos", un: "sc", qtd: 0, min: 8, max: 30, custo: 7.5, venda: 0 },
+  { id: 11, nome: "Copo descartável 300ml (cento)", cat: "Descartáveis", un: "ct", qtd: 6, min: 5, max: 20, custo: 9.9, venda: 0 },
+  { id: 12, nome: "Guardanapo (pacote)", cat: "Descartáveis", un: "pct", qtd: 3, min: 6, max: 24, custo: 4.2, venda: 0 },
+];
+const initialMovs = [
+  { id: "m1", hora: "Hoje 11:42", produto: "Cerveja Long Neck", tipo: "Saída", qtd: 24, un: "un", saldo: 84, obs: "Consumo do dia" },
+  { id: "m2", hora: "Hoje 09:10", produto: "Água mineral", tipo: "Entrada", qtd: 48, un: "un", saldo: 60, obs: "Compra — Distribuidora Serra" },
+  { id: "m3", hora: "Ontem 21:30", produto: "Gelo em barra", tipo: "Saída", qtd: 12, un: "sc", saldo: 0, obs: "Evento do salão" },
+  { id: "m4", hora: "Ontem 17:05", produto: "Refrigerante lata", tipo: "Ajuste", qtd: 12, un: "un", saldo: 12, obs: "Contagem física" },
+];
+const fmtQtd = (v) => v.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
+function statusEstoque(i) {
+  if (i.qtd <= 0) return { k: "zero", tone: "bad", label: "Esgotado" };
+  if (i.qtd < i.min) return { k: "baixo", tone: "bad", label: "Estoque baixo" };
+  if (i.qtd <= i.min * 1.25) return { k: "atencao", tone: "warn", label: "Atenção" };
+  return { k: "ok", tone: "ok", label: "OK" };
+}
+
+function EstoqueBar({ T, notify, estoque, setEstoque }) {
+  const [movs, setMovs] = useState(initialMovs);
+  const [busca, setBusca] = useState("");
+  const [cat, setCat] = useState("Todas");
+  const [soBaixo, setSoBaixo] = useState(false);
+  const [mov, setMov] = useState(null); // { item, tipo, qtd, obs }
+  const [novo, setNovo] = useState(null);
+
+  const lista = estoque.filter((i) => {
+    if (cat !== "Todas" && i.cat !== cat) return false;
+    if (soBaixo && ["ok"].includes(statusEstoque(i).k)) return false;
+    return i.nome.toLowerCase().includes(busca.trim().toLowerCase());
+  });
+  const aRepor = estoque.filter((i) => i.qtd < i.min).map((i) => ({ ...i, sugerida: i.max - i.qtd }));
+  const totalCompra = aRepor.reduce((s, i) => s + i.sugerida * i.custo, 0);
+  const valorEstoque = estoque.reduce((s, i) => s + i.qtd * i.custo, 0);
+
+  function abrirMov(item, tipo, qtd) { setMov({ item, tipo, qtd: qtd ?? "", obs: "" }); }
+  function confirmarMov(e) {
+    e.preventDefault();
+    const q = Number(String(mov.qtd).replace(",", "."));
+    const { item, tipo } = mov;
+    if (!(q >= 0) || (tipo !== "Ajuste" && q === 0)) return;
+    if (tipo === "Saída" && q > item.qtd) return;
+    const saldo = tipo === "Entrada" ? item.qtd + q : tipo === "Saída" ? item.qtd - q : q;
+    setEstoque((es) => es.map((x) => x.id === item.id ? { ...x, qtd: Math.round(saldo * 100) / 100 } : x));
+    setMovs((m) => [{ id: Math.random().toString(36).slice(2), hora: "Agora", produto: item.nome, tipo, qtd: q, un: item.un, saldo, obs: mov.obs || (tipo === "Entrada" ? "Compra" : tipo === "Saída" ? "Consumo" : "Contagem física") }, ...m]);
+    notify(tipo + " registrada: " + item.nome + " (saldo " + fmtQtd(saldo) + " " + item.un + ")", saldo < item.min ? "warn" : "ok");
+    setMov(null);
+  }
+  function salvarNovo(e) {
+    e.preventDefault();
+    const n = { ...novo, qtd: Number(novo.qtd) || 0, min: Number(novo.min) || 0, max: Number(novo.max) || 0, custo: Number(String(novo.custo).replace(",", ".")) || 0, venda: Number(String(novo.venda).replace(",", ".")) || 0 };
+    if (!n.nome.trim() || n.max < n.min) return;
+    setEstoque((es) => [...es, { ...n, id: Date.now(), nome: n.nome.trim() }]);
+    notify("Produto cadastrado: " + n.nome.trim(), "ok");
+    setNovo(null);
+  }
+  function copiarLista() {
+    const txt = "Lista de compras — Bar SRCCC\n" + aRepor.map((i) => "• " + i.nome + ": " + fmtQtd(i.sugerida) + " " + i.un).join("\n") + "\nTotal estimado: " + brl(totalCompra);
+    try { navigator.clipboard.writeText(txt).then(() => notify("Lista copiada para a área de transferência", "ok"), () => notify("Não foi possível copiar", "warn")); }
+    catch { notify("Não foi possível copiar", "warn"); }
+  }
+
+  const movQ = mov ? Number(String(mov.qtd).replace(",", ".")) : 0;
+  const movErro = mov && mov.tipo === "Saída" && movQ > mov.item.qtd ? "Quantidade maior que o estoque (" + fmtQtd(mov.item.qtd) + " " + mov.item.un + ")." : "";
+  const novoErro = novo && novo.max !== "" && Number(novo.max) < Number(novo.min) ? "O máximo precisa ser maior que o mínimo." : "";
+
+  return (
+    <>
+      <div className="est-stats">
+        <div className="cob-stat"><div className="label">Produtos</div><div className="cob-num">{estoque.length}</div></div>
+        <div className="cob-stat"><div className="label">Abaixo do mínimo</div><div className="cob-num" style={{ color: aRepor.length ? "var(--red)" : undefined }}>{aRepor.length}</div></div>
+        <div className="cob-stat"><div className="label">Valor em estoque</div><div className="cob-num">{brl(valorEstoque)}</div></div>
+        <div className="cob-stat"><div className="label">Compra sugerida</div><div className="cob-num">{brl(totalCompra)}</div></div>
+      </div>
+
+      <div className="toolbar">
+        <div className="search-box"><Search size={15} /><input aria-label="Buscar produto" placeholder="Buscar produto…" value={busca} onChange={(e) => setBusca(e.target.value)} /></div>
+        <div className="est-filters" role="group" aria-label="Filtrar por categoria">
+          {["Todas", ...ESTOQUE_CATS].map((c) => <button key={c} type="button" className={"chip" + (cat === c ? " on" : "")} aria-pressed={cat === c} onClick={() => setCat(c)}>{c}</button>)}
+          <button type="button" className={"chip" + (soBaixo ? " on" : "")} aria-pressed={soBaixo} onClick={() => setSoBaixo(!soBaixo)}><ShieldAlert size={13} />Só alertas</button>
+        </div>
+        <button className="btn-add" onClick={() => setNovo({ nome: "", cat: "Bebidas", un: "un", qtd: "", min: "", max: "", custo: "", venda: "" })}><Plus size={15} /> Novo produto</button>
+      </div>
+
+      <Card style={{ padding: 0 }}>
+        <TableWrap>
+          <table>
+            <thead><tr><th>Produto</th><th>Categoria</th><th style={{ minWidth: 170 }}>Nível</th><th>Estoque</th><th>Custo / venda</th><th>Status</th><th>Movimentar</th></tr></thead>
+            <tbody>
+              {lista.length === 0 && <tr><td colSpan={7} style={{ textAlign: "center", padding: 28, color: "var(--text-soft)" }}>Nenhum produto encontrado.</td></tr>}
+              {lista.map((i) => {
+                const st = statusEstoque(i);
+                const pct = Math.min(100, (i.qtd / i.max) * 100);
+                const minPct = Math.min(100, (i.min / i.max) * 100);
+                const margem = i.venda > 0 ? Math.round(((i.venda - i.custo) / i.venda) * 100) : null;
+                return (
+                  <tr key={i.id}>
+                    <td className="row-name">{i.nome}</td>
+                    <td>{i.cat}</td>
+                    <td>
+                      <div className="est-bar" role="img" aria-label={"Nível: " + Math.round(pct) + "% da capacidade"}>
+                        <span className={"est-fill " + st.k} style={{ width: pct + "%" }} />
+                        <span className="est-min" style={{ left: minPct + "%" }} title={"Mínimo: " + fmtQtd(i.min) + " " + i.un} />
+                      </div>
+                    </td>
+                    <td><b>{fmtQtd(i.qtd)}</b> <span className="row-sub">{i.un} · mín. {fmtQtd(i.min)}</span></td>
+                    <td><div>{brl(i.custo)}</div><div className="row-sub">{i.venda > 0 ? brl(i.venda) + " · margem " + margem + "%" : "uso interno"}</div></td>
+                    <td><Pill tone={st.tone} T={T}>{st.label}</Pill></td>
+                    <td className="table-actions est-actions">
+                      <button onClick={() => abrirMov(i, "Entrada", st.k !== "ok" && st.k !== "atencao" ? i.max - i.qtd : "")} aria-label={"Entrada de " + i.nome}><Plus size={13} />Entrada</button>
+                      <button onClick={() => abrirMov(i, "Saída")} disabled={i.qtd <= 0} aria-label={"Saída de " + i.nome}><Minus size={13} />Saída</button>
+                      <button onClick={() => abrirMov(i, "Ajuste", i.qtd)} aria-label={"Ajustar contagem de " + i.nome}><ArrowUpDown size={13} />Ajustar</button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </TableWrap>
+      </Card>
+
+      <div className="grid-2">
+        <Card title="Lista de compras sugerida" action={aRepor.length > 0 ? <button className="btn-ghost" onClick={copiarLista}><Download size={14} /> Copiar lista</button> : null}>
+          {aRepor.length === 0 ? (
+            <div className="cal-empty"><CheckCircle2 size={26} /><div>Estoque em dia</div><span>Nenhum produto abaixo do mínimo.</span></div>
+          ) : (
+            <>
+              <ul className="simple-list">
+                {aRepor.map((i) => (
+                  <li key={i.id}>
+                    <span><span className="who">{i.nome}</span> <span className="meta">· faltam {fmtQtd(i.min - i.qtd)} {i.un} para o mínimo</span></span>
+                    <span style={{ display: "flex", alignItems: "center", gap: 10 }}><b>{fmtQtd(i.sugerida)} {i.un}</b><button className="btn-ghost est-mini" onClick={() => abrirMov(estoque.find((x) => x.id === i.id), "Entrada", i.sugerida)}>Repor</button></span>
+                  </li>
+                ))}
+              </ul>
+              <div className="kv-list" style={{ marginTop: 10 }}><div className="kv"><span>Total estimado (a preço de custo)</span><b>{brl(totalCompra)}</b></div></div>
+            </>
+          )}
+        </Card>
+
+        <Card title="Últimas movimentações">
+          <ul className="simple-list">
+            {movs.slice(0, 7).map((m) => (
+              <li key={m.id}>
+                <span><span className="who">{m.produto}</span> <span className="meta">· {m.obs}</span><div className="meta">{m.hora}</div></span>
+                <span style={{ textAlign: "right" }}><Pill tone={m.tipo === "Entrada" ? "ok" : m.tipo === "Saída" ? "warn" : "neutral"} T={T}>{m.tipo === "Entrada" ? "+" : m.tipo === "Saída" ? "−" : "="}{fmtQtd(m.qtd)} {m.un}</Pill><div className="meta">saldo {fmtQtd(m.saldo)}</div></span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      </div>
+
+      {mov && (
+        <div className="modal-bg" onClick={() => setMov(null)} onKeyDown={(e) => e.key === "Escape" && setMov(null)}>
+          <form className="modal" style={{ maxWidth: 440 }} role="dialog" aria-modal="true" aria-labelledby="est-mov-t" onClick={(e) => e.stopPropagation()} onSubmit={confirmarMov}>
+            <div className="modal-head"><h3 id="est-mov-t">{mov.tipo === "Ajuste" ? "Ajustar contagem" : mov.tipo + " de estoque"}</h3><button type="button" className="modal-close" onClick={() => setMov(null)} aria-label="Fechar"><X size={18} /></button></div>
+            <div className="est-mov-item"><b>{mov.item.nome}</b><span>Saldo atual: {fmtQtd(mov.item.qtd)} {mov.item.un}</span></div>
+            <div className="seg" role="group" aria-label="Tipo de movimentação" style={{ marginBottom: 14 }}>
+              {["Entrada", "Saída", "Ajuste"].map((t) => <button type="button" key={t} className={mov.tipo === t ? "on" : ""} aria-pressed={mov.tipo === t} onClick={() => setMov({ ...mov, tipo: t, qtd: t === "Ajuste" ? mov.item.qtd : "" })}>{t}</button>)}
+            </div>
+            <div className="field"><label htmlFor="est-q">{mov.tipo === "Ajuste" ? "Quantidade contada (" + mov.item.un + ")" : "Quantidade (" + mov.item.un + ")"}</label>
+              <input id="est-q" autoFocus type="number" min="0" step="any" inputMode="decimal" value={mov.qtd} onChange={(e) => setMov({ ...mov, qtd: e.target.value })} />
+            </div>
+            <div className="field"><label htmlFor="est-o">Observação</label>
+              <input id="est-o" value={mov.obs} onChange={(e) => setMov({ ...mov, obs: e.target.value })} placeholder={mov.tipo === "Entrada" ? "Ex.: compra — fornecedor" : mov.tipo === "Saída" ? "Ex.: consumo, quebra, evento" : "Ex.: contagem física"} />
+            </div>
+            {movErro && <div className="cal-alert bad" role="alert"><ShieldAlert size={15} /> <span>{movErro}</span></div>}
+            {!movErro && movQ > 0 && mov.tipo !== "Ajuste" && <div className="cal-alert ok"><CheckCircle2 size={15} /> <span>Novo saldo: {fmtQtd(mov.tipo === "Entrada" ? mov.item.qtd + movQ : mov.item.qtd - movQ)} {mov.item.un}</span></div>}
+            <div className="modal-foot">
+              <button type="button" className="btn-ghost" onClick={() => setMov(null)}>Cancelar</button>
+              <button type="submit" className="btn-add" disabled={!!movErro || mov.qtd === "" || (mov.tipo !== "Ajuste" && movQ <= 0)}>Confirmar</button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {novo && (
+        <div className="modal-bg" onClick={() => setNovo(null)} onKeyDown={(e) => e.key === "Escape" && setNovo(null)}>
+          <form className="modal" role="dialog" aria-modal="true" aria-labelledby="est-novo-t" onClick={(e) => e.stopPropagation()} onSubmit={salvarNovo}>
+            <div className="modal-head"><h3 id="est-novo-t">Novo produto</h3><button type="button" className="modal-close" onClick={() => setNovo(null)} aria-label="Fechar"><X size={18} /></button></div>
+            <div className="form-grid">
+              <div className="field full"><label htmlFor="n-nome">Nome</label><input id="n-nome" autoFocus required value={novo.nome} onChange={(e) => setNovo({ ...novo, nome: e.target.value })} /></div>
+              <div className="field"><label htmlFor="n-cat">Categoria</label><select id="n-cat" value={novo.cat} onChange={(e) => setNovo({ ...novo, cat: e.target.value })}>{ESTOQUE_CATS.map((c) => <option key={c}>{c}</option>)}</select></div>
+              <div className="field"><label htmlFor="n-un">Unidade</label><select id="n-un" value={novo.un} onChange={(e) => setNovo({ ...novo, un: e.target.value })}>{["un", "kg", "pct", "sc", "ct", "L"].map((u) => <option key={u}>{u}</option>)}</select></div>
+              <div className="field"><label htmlFor="n-qtd">Estoque inicial</label><input id="n-qtd" type="number" min="0" step="any" value={novo.qtd} onChange={(e) => setNovo({ ...novo, qtd: e.target.value })} /></div>
+              <div className="field"><label htmlFor="n-min">Mínimo</label><input id="n-min" type="number" min="0" step="any" required value={novo.min} onChange={(e) => setNovo({ ...novo, min: e.target.value })} /></div>
+              <div className="field"><label htmlFor="n-max">Máximo (capacidade)</label><input id="n-max" type="number" min="1" step="any" required value={novo.max} onChange={(e) => setNovo({ ...novo, max: e.target.value })} /></div>
+              <div className="field"><label htmlFor="n-custo">Custo (R$)</label><input id="n-custo" inputMode="decimal" value={novo.custo} onChange={(e) => setNovo({ ...novo, custo: e.target.value })} /></div>
+              <div className="field"><label htmlFor="n-venda">Preço de venda (R$)</label><input id="n-venda" inputMode="decimal" value={novo.venda} onChange={(e) => setNovo({ ...novo, venda: e.target.value })} placeholder="vazio = uso interno" /></div>
+            </div>
+            {novoErro && <div className="cal-alert warn" role="alert">{novoErro}</div>}
+            <div className="modal-foot"><button type="button" className="btn-ghost" onClick={() => setNovo(null)}>Cancelar</button><button type="submit" className="btn-add" disabled={!!novoErro}>Salvar produto</button></div>
+          </form>
+        </div>
+      )}
+    </>
+  );
+}
+
 function BarClube({ T, barTab, setBarTab, notify }) {
+  const [estoque, setEstoque] = useState(initialEstoque);
+  const estoqueBaixo = estoque.filter((i) => i.qtd < i.min).length;
   const produtos = ["Cerveja", "Refrigerante", "Água", "Espetinho", "Porção fritas", "Salgado", "Suco", "Água de coco"];
   return (
     <div className="view">
       <div className="kpi-grid">
         <div className="kpi-card"><div className="label">Comandas abertas</div><div className="value"><KpiNumber value={7} /></div></div>
         <div className="kpi-card"><div className="label">Faturamento do bar hoje</div><div className="value">R$ <KpiNumber value={612} /></div></div>
-        <div className="kpi-card"><div className="label">Itens com estoque baixo</div><div className="value"><KpiNumber value={2} /></div></div>
+        <div className="kpi-card"><div className="label">Itens com estoque baixo</div><div className="value"><KpiNumber value={estoqueBaixo} /></div></div>
       </div>
 
       <div className="subtabs">
@@ -1647,22 +1860,7 @@ function BarClube({ T, barTab, setBarTab, notify }) {
         </div>
       )}
 
-      {barTab === "estoque" && (
-        <Card style={{ padding: 0 }}>
-          <TableWrap>
-            <table>
-              <thead><tr><th>Produto</th><th>Categoria</th><th>Estoque</th><th>Mínimo</th><th>Status</th></tr></thead>
-              <tbody>
-                <tr><td className="row-name">Cerveja Long Neck</td><td>Bebidas</td><td>84 un</td><td>40 un</td><td><Pill tone="ok" T={T}>OK</Pill></td></tr>
-                <tr><td className="row-name">Refrigerante lata</td><td>Bebidas</td><td>12 un</td><td>30 un</td><td><Pill tone="bad" T={T}>Estoque baixo</Pill></td></tr>
-                <tr><td className="row-name">Água mineral</td><td>Bebidas</td><td>60 un</td><td>20 un</td><td><Pill tone="ok" T={T}>OK</Pill></td></tr>
-                <tr><td className="row-name">Salgadinhos (pacote)</td><td>Petiscos</td><td>8 un</td><td>15 un</td><td><Pill tone="bad" T={T}>Estoque baixo</Pill></td></tr>
-                <tr><td className="row-name">Carvão (kg)</td><td>Insumos</td><td>25 kg</td><td>10 kg</td><td><Pill tone="ok" T={T}>OK</Pill></td></tr>
-              </tbody>
-            </table>
-          </TableWrap>
-        </Card>
-      )}
+      {barTab === "estoque" && <EstoqueBar T={T} notify={notify} estoque={estoque} setEstoque={setEstoque} />}
     </div>
   );
 }
@@ -2843,6 +3041,22 @@ tbody tr:hover td:first-child{ box-shadow:inset 3px 0 0 var(--gold); }
   .cal-grid .cal-daynum{ justify-content:center; }
   .cal-count{ margin-left:0; width:100%; }
 }
+
+/* ===== estoque do bar ===== */
+.est-stats{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:16px; }
+.est-filters{ display:flex; gap:6px; flex-wrap:wrap; flex:1; }
+.est-bar{ position:relative; height:10px; border-radius:999px; background:var(--surface-alt); border:1px solid var(--border); overflow:visible; }
+.est-fill{ display:block; height:100%; border-radius:999px; transition:width .6s var(--ease-out); background:var(--ok); }
+.est-fill.atencao{ background:var(--amber); }
+.est-fill.baixo, .est-fill.zero{ background:var(--red); }
+.est-min{ position:absolute; top:-4px; bottom:-4px; width:2px; background:var(--text); opacity:.55; border-radius:2px; transform:translateX(-1px); }
+.est-actions button{ white-space:nowrap; }
+.est-mini{ padding:5px 10px; font-size:12px; }
+.est-mov-item{ display:flex; flex-direction:column; gap:2px; padding:10px 12px; border-radius:12px; background:var(--surface-alt); margin-bottom:14px; font-size:13px; }
+.est-mov-item span{ color:var(--text-soft); font-size:12.5px; }
+.modal .seg{ display:flex; }
+.modal .seg button{ flex:1; }
+@media (max-width:1080px){ .est-stats{ grid-template-columns:repeat(2,1fr); } }
 
 @media (prefers-reduced-motion: reduce){
   .login-card{ transform:none !important; }
