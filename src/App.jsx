@@ -1184,7 +1184,7 @@ function Financeiro({ T, finTab, setFinTab, notify, openModal }) {
                 <tr><td>Dependente 70 anos ou mais</td><td>R$ 36,74</td></tr>
                 <tr><td>Carteira (emissão/3ª via)</td><td>R$ 20,90</td></tr>
                 <tr><td>Reinclusão de dependente</td><td>R$ 392,62</td></tr>
-                <tr><td>Joia de admissão</td><td>Conforme sua categoria</td></tr>
+                <tr><td>Joia de admissão</td><td>Conforme suas categorias</td></tr>
               </tbody>
             </table>
           </TableWrap>
